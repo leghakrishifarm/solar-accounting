@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      lang="en"
+      layout:decorate="~{fragments/layout-partner}">
+<head>
+    <meta charset="UTF-8"/>
+    <title>My Bills - Lega Krishi Farm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+    <style>
+        .page-title { font-size: 2rem; font-weight: 700; color: #007bff; letter-spacing: 0.02em; }
+        .bills-table th, .bills-table td { vertical-align: middle; text-align: center; }
+        .sticky-thead th { position: sticky; top: 0; background: #007bff; color: #fff; z-index: 1; }
+        @media (max-width: 700px) {
+            .page-title { font-size: 1.2rem; }
+            .table-responsive { font-size: 0.98rem; }
+        }
+    </style>
+</head>
+<body>
+<section layout:fragment="content">
+    <div class="container py-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body pb-0">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                    <span class="page-title mb-2 mb-md-0">
+                        <i class="bi bi-receipt me-2"></i>My Bills
+                    </span>
+                </div>
+                <div class="table-responsive mb-2">
+                    <table class="table table-bordered table-hover align-middle bills-table">
+                        <thead class="sticky-thead">
+                        <tr>
+                            <th>Invoice No.</th>
+                            <th>Bill Date</th>
+                            <th>Month</th>
+                            <th>Year</th>
+                            <th>Import (kWh)</th>
+                            <th>Export (kWh)</th>
+                            <th>Net Amount (kWh)</th>
+                            <th>Net Amount (kVArh)</th>
+                            <th>Total Payable</th>
+                            <th>Status</th>
+                            <th>Download</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="bill : ${bills}">
+                            <td th:text="${bill.invoiceNumber != null ? bill.invoiceNumber : 'N/A'}"></td>
+                            <td th:text="${bill.billDate != null ? #temporals.format(bill.billDate, 'dd-MM-yyyy') : 'N/A'}"></td>
+                            <td th:text="${bill.month != null ? bill.month : 'N/A'}"></td>
+                            <td th:text="${bill.year != null ? bill.year : 'N/A'}"></td>
+                            <td th:text="${bill.totalKwhImport != null ? bill.totalKwhImport : 0}"></td>
+                            <td th:text="${bill.totalKwhExport != null ? bill.totalKwhExport : 0}"></td>
+                            <td th:text="${bill.netAmountKwh != null ? bill.netAmountKwh : 0}"></td>
+                            <td th:text="${bill.netAmountKvarh != null ? bill.netAmountKvarh : 0}"></td>
+                            <td th:text="${bill.totalPayableAmount != null ? bill.totalPayableAmount : 0}"></td>
+                            <td>
+                                <span th:text="${bill.status != null ? bill.status : 'UNKNOWN'}"
+                                      th:classappend="${bill.status == 'PENDING'} ? 'badge bg-warning text-dark' : (bill.status == 'PAID' ? 'badge bg-success' : 'badge bg-secondary')">
+                                </span>
+                            </td>
+                            <td>
+                                <a th:href="@{/partners/bills/download/{id}(id=${bill.id})}"
+                                   class="btn btn-sm btn-info" title="Download PDF">
+                                    <i class="bi bi-file-earmark-arrow-down"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(bills)}">
+                            <td colspan="11" class="text-center text-muted">No bills found.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

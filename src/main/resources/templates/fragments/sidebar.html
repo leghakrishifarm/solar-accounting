@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" ...>
+
+<!-- fragments/sidebar.html -->
+<div id="sidebar" class="sidebar d-flex flex-column align-items-center" th:fragment="sidebar">
+    <img src="/img/legha_logo.png" alt="Legha Krishi Logo" class="brand-logo mb-2" />
+    <div class="sidebar-heading text-center mb-3">Legha Krishi<br/>Admin</div>
+    <nav class="nav flex-column w-100">
+        <a class="nav-link" th:href="@{/admin/dashboard}" th:classappend="${page == 'dashboard'} ? 'active' : ''">
+            <i class="bi bi-house-door me-2"></i>Dashboard
+        </a>
+        <a class="nav-link" th:href="@{/admin/partners}" th:classappend="${page == 'partners'} ? 'active' : ''">
+            <i class="bi bi-people me-2"></i>Partners
+        </a>
+        <a class="nav-link" th:href="@{/admin/transactions}" th:classappend="${page == 'transactions'} ? 'active' : ''">
+            <i class="bi bi-cash-coin me-2"></i>Transactions
+        </a>
+        <a class="nav-link" th:href="@{/admin/jmr_reports}" th:classappend="${page == 'jmr'} ? 'active' : ''">
+            <i class="bi bi-clipboard-data me-2"></i>JMR Reports
+        </a>
+        <a class="nav-link" th:href="@{/admin/bills}" th:classappend="${page == 'bills'} ? 'active' : ''">
+            <i class="bi bi-file-earmark-text me-2"></i>Bills
+        </a>
+        <hr class="w-100 my-2"/>
+        <form th:action="@{/logout}" method="post" style="display: inline;">
+            <button type="submit" class="nav-link btn btn-link w-100 text-start px-0" style="color: inherit; text-decoration: none;">
+                <i class="bi bi-box-arrow-right me-2"></i>Logout
+            </button>
+        </form>
+    </nav>
+</div>

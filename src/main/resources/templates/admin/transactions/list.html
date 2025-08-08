@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      lang="en"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>Transactions List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
+    <style>
+        .page-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #0d6efd;
+            letter-spacing: 0.02em;
+        }
+        .action-btns {
+            display: flex;
+            gap: .7rem;
+        }
+        @media (max-width: 600px) {
+            .page-title { font-size: 1.15rem; }
+            .action-btns { flex-direction: column; gap: .5rem; width: 100%; }
+            .action-btns a { width: 100%; }
+        }
+        .transactions-table th,
+        .transactions-table td {
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+<section layout:fragment="content">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body pb-0">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <span class="page-title mb-2 mb-md-0">All Transactions</span>
+                <div class="action-btns">
+                    <a th:href="@{/admin/transactions/other-income/add}" class="btn btn-success d-flex align-items-center">
+                        <i class="bi bi-plus-circle me-2"></i> Add Other Income
+                    </a>
+                    <a th:href="@{/admin/transactions/add/outgoing}" class="btn btn-outline-primary d-flex align-items-center">
+                        <i class="bi bi-arrow-up-right-circle me-2"></i> Add Outgoing
+                    </a>
+                    <a th:href="@{/admin/transactions/list/outgoing}" class="btn btn-outline-secondary d-flex align-items-center">
+                        <i class="bi bi-list-ul me-2"></i> List Outgoing
+                    </a>
+                </div>
+            </div>
+
+            <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+            <div class="table-responsive mb-3">
+                <table class="table table-bordered table-striped table-hover align-middle transactions-table">
+                    <thead class="table-primary">
+                    <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Amount (₹)</th>
+                        <th>Description</th>
+                        <th>Partner</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="txn : ${transactions}">
+                        <td th:text="${txn.id}">1</td>
+                        <td th:text="${#temporals.format(txn.dateTime, 'dd-MM-yyyy HH:mm')}">01-08-2025 10:00</td>
+                        <td>
+                            <span th:text="${txn.type}"
+                                  th:classappend="${txn.type == 'INCOMING'} ? 'badge bg-success text-light px-3 py-2' : 'badge bg-warning text-dark px-3 py-2'">
+                                INCOMING
+                            </span>
+                        </td>
+                        <td th:text="${#numbers.formatDecimal(txn.amount, 1, 'COMMA', 2, 'POINT')}">1000.00</td>
+                        <td th:text="${txn.description}">Payment received</td>
+                        <td th:text="${txn.partner != null ? txn.partner.name : 'N/A'}">Partner Name</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(transactions)}">
+                        <td colspan="6" class="text-center text-muted">No transactions found.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <a th:href="@{/admin/dashboard}" class="btn btn-secondary mt-2">
+                <i class="bi bi-arrow-left-circle"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</section>
+</body>
+</html>

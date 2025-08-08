@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" ...>
+
+<!-- fragments/sidebar-partner.html -->
+<div id="sidebar" class="sidebar d-flex flex-column align-items-center" th:fragment="sidebar">
+    <img src="/img/legha_logo.png" alt="Legha Krishi Logo" class="brand-logo mb-2" />
+    <div class="sidebar-heading text-center mb-3">Legha Krishi<br/>Partner</div>
+    <nav class="nav flex-column w-100">
+        <a class="nav-link" th:href="@{/partners/dashboard}" th:classappend="${page == 'dashboard'} ? 'active' : ''">
+            <i class="bi bi-house-door me-2"></i>Dashboard
+        </a>
+        <a class="nav-link" th:href="@{/partners/jmr-reports}" th:classappend="${page == 'jmr'} ? 'active' : ''">
+            <i class="bi bi-clipboard-data me-2"></i>JMR Reports
+        </a>
+        <a class="nav-link" th:href="@{/partners/my-bills}" th:classappend="${page == 'bills'} ? 'active' : ''">
+            <i class="bi bi-file-earmark-text me-2"></i>My Bills
+        </a>
+        <a class="nav-link" th:href="@{/partners/transactions}" th:classappend="${page == 'transactions'} ? 'active' : ''">
+            <i class="bi bi-cash-coin me-2"></i>My Transactions
+        </a>
+        <a class="nav-link" th:href="@{/partners/payment-history}" th:classappend="${page == 'payment-history'} ? 'active' : ''">
+            <i class="bi bi-cash-stack me-2"></i>Payment History
+        </a>
+        <a class="nav-link" th:href="@{/partners/profile}" th:classappend="${page == 'profile'} ? 'active' : ''">
+            <i class="bi bi-person me-2"></i>Profile
+        </a>
+        <hr class="w-100 my-2"/>
+        <!-- fragments/sidebar-partner.html -->
+        <form th:action="@{/logout}" method="post" th:fragment="logoutForm">
+            <button type="submit" class="nav-link btn btn-link text-start">
+                <i class="bi bi-box-arrow-right me-2"></i>Logout
+            </button>
+        </form>
+    </nav>
+</div>

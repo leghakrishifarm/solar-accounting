@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout-partner}">
+<head>
+    <title layout:fragment="title">Partner Profile</title>
+</head>
+<body>
+<section layout:fragment="content">
+    <div class="container-fluid py-3">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8 col-xl-6">
+                <div class="card shadow-sm rounded p-4 border-0 bg-white">
+                    <!-- Title -->
+                    <h4 class="text-center text-success mb-3">
+                        <i class="bi bi-person-circle me-2"></i> Partner Profile
+                    </h4>
+
+                    <!-- Alerts -->
+                    <div th:if="${success}" class="alert alert-success text-center" th:text="${success}"></div>
+                    <div th:if="${error}" class="alert alert-danger text-center" th:text="${error}"></div>
+
+                    <!-- Profile Form -->
+                    <form th:action="@{/partners/profile}" method="post" th:object="${partner}" autocomplete="off">
+                        <!-- Name -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-person"></i> Name</label>
+                            <input type="text" th:field="*{name}" class="form-control" readonly>
+                        </div>
+
+                        <!-- Mobile -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-telephone"></i> Mobile</label>
+                            <input type="text" th:field="*{mobile}" class="form-control" placeholder="Your mobile number" required>
+                        </div>
+
+                        <!-- Share % -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-percent"></i> Share (%)</label>
+                            <input type="number" th:field="*{sharePercent}" class="form-control" min="0" max="100" step="0.01" required>
+                        </div>
+
+                        <!-- ITR Status -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-file-earmark-text"></i> ITR Status</label>
+                            <select th:field="*{itrStatus}" class="form-select" required>
+                                <option value="">Select</option>
+                                <option value="Submitted">Submitted</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Not Applicable">Not Applicable</option>
+                            </select>
+                        </div>
+
+                        <!-- GST Status -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-receipt"></i> GST Status</label>
+                            <select th:field="*{gstStatus}" class="form-select" required>
+                                <option value="">Select</option>
+                                <option value="Submitted">Submitted</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Not Applicable">Not Applicable</option>
+                            </select>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-save me-1"></i> Update Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

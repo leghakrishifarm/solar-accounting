@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      lang="en"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>JMR Entry Form</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <style>
+        body { background: #f8f9fa; }
+        .form-section {
+            background: #fff;
+            border-radius: 1.2rem;
+            box-shadow: 0 6px 24px rgba(55,125,255,0.07);
+            padding: 2.3rem 2.2rem 2rem 2.2rem;
+            margin-bottom: 2rem;
+        }
+        .section-title {
+            font-size: 2.1rem;
+            font-weight: 700;
+            color: #20639b;
+            letter-spacing: 0.04em;
+            text-align: center;
+            border-bottom: 2px solid #e8eaf6;
+            padding-bottom: .7rem;
+            margin-bottom: 2rem;
+        }
+        .meter-card {
+            background: #f3f6fd;
+            border-radius: .95rem;
+            box-shadow: 0 1px 8px rgba(32,99,155,0.09);
+            padding: 1.2rem 1rem 0.5rem 1rem;
+            margin-bottom: 2rem;
+        }
+        .meter-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #0d6efd;
+            margin-bottom: 1rem;
+        }
+        .form-label { font-weight: 600; }
+        .btn-primary {
+            background: #20639b;
+            border-color: #20639b;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+        .btn-back {
+            background: #fff;
+            border: 1.2px solid #20639b;
+            color: #20639b;
+            font-weight: 500;
+            border-radius: 0.45rem;
+        }
+        .btn-back:hover {
+            background: #20639b;
+            color: #fff;
+        }
+        .logo-frame {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1.2rem;
+        }
+        .logo-img {
+            height: 68px;
+            width: auto;
+            background: #fff;
+            border-radius: 1.5rem;
+            border: 1.5px solid #e2eafc;
+            box-shadow: 0 2px 10px rgba(32,99,155,0.11);
+            padding: 0.6rem 1.2rem;
+            object-fit: contain;
+        }
+        .row-divider { border-bottom: 1.5px solid #e0e8f8; margin: 1.2rem 0; }
+        @media (max-width: 700px) {
+            .form-section { padding: 1.1rem 0.3rem; }
+            .section-title { font-size: 1.18rem; }
+        }
+    </style>
+</head>
+<body>
+<section layout:fragment="content">
+    <div class="container py-4">
+        <div class="mx-auto" style="max-width: 980px;">
+            <div class="form-section">
+                <div class="logo-frame">
+                    <img src="/img/legha_logo.png" alt="Logo" class="logo-img"
+                         onerror="this.style.display='none';">
+                </div>
+                <div class="section-title">
+                    <i class="bi bi-clipboard-data me-2"></i>Joint Meter Reading (JMR) Entry
+                </div>
+                <form th:action="@{/admin/jmr_reports/add}" th:object="${jmrReport}" method="post">
+                    <!-- Site & General Details -->
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Plant Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" th:field="*{plantName}" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Month <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" th:field="*{month}" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Year <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" th:field="*{year}" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Reading Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" th:field="*{readingDate}" required>
+                        </div>
+                    </div>
+                    <!-- MAIN METER SECTION -->
+                    <div class="meter-card">
+                        <div class="meter-title">
+                            <i class="bi bi-lightning-charge"></i> Main Meter Details
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-3">
+                                <label>Meter Number</label>
+                                <input type="text" class="form-control" th:field="*{mainMeter.meterName}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Old Seal No.</label>
+                                <input type="text" class="form-control" th:field="*{mainMeter.sealOld}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>New Seal No.</label>
+                                <input type="text" class="form-control" th:field="*{mainMeter.sealNew}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Panel Box Status</label>
+                                <input type="text" class="form-control" th:field="*{mainMeter.panelBoxStatus}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-3">
+                                <label>Meter Body Status</label>
+                                <input type="text" class="form-control" th:field="*{mainMeter.meterBodyStatus}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Terminal Status</label>
+                                <input type="text" class="form-control" th:field="*{mainMeter.terminalStatus}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Test Terminal Block Status</label>
+                                <input type="text" class="form-control" th:field="*{mainMeter.testTerminalBlockStatus}">
+                            </div>
+                        </div>
+                        <h6 class="meter-title mt-4 mb-3"><i class="bi bi-speedometer2"></i> Main Meter Readings</h6>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kWh Import Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kwhImportStart}">
+                            </div>
+                            <div class="col"><label>kWh Import End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kwhImportEnd}">
+                            </div>
+                            <div class="col"><label>kWh Export Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kwhExportStart}">
+                            </div>
+                            <div class="col"><label>kWh Export End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kwhExportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kVAh Import Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvahImportStart}">
+                            </div>
+                            <div class="col"><label>kVAh Import End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvahImportEnd}">
+                            </div>
+                            <div class="col"><label>kVAh Export Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvahExportStart}">
+                            </div>
+                            <div class="col"><label>kVAh Export End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvahExportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kVArh Lag Import (Q1) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLagImportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lag Import (Q1) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLagImportEnd}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Import (Q2) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLeadImportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Import (Q2) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLeadImportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kVArh Lag Export (Q3) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLagExportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lag Export (Q3) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLagExportEnd}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Export (Q4) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLeadExportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Export (Q4) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.kvarhLeadExportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>Import Power Factor</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.importPowerFactor}">
+                            </div>
+                            <div class="col"><label>Export Power Factor</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.exportPowerFactor}">
+                            </div>
+                            <div class="col"><label>Import Billing MD (kVA)</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.importBillingMD}">
+                            </div>
+                            <div class="col"><label>Export Billing MD (kVA)</label>
+                                <input type="number" step="any" class="form-control" th:field="*{mainMeter.exportBillingMD}">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- CHECK METER SECTION -->
+                    <div class="meter-card">
+                        <div class="meter-title">
+                            <i class="bi bi-lightning-charge-fill"></i> Check Meter Details
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-3">
+                                <label>Meter Number</label>
+                                <input type="text" class="form-control" th:field="*{checkMeter.meterName}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Old Seal No.</label>
+                                <input type="text" class="form-control" th:field="*{checkMeter.sealOld}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>New Seal No.</label>
+                                <input type="text" class="form-control" th:field="*{checkMeter.sealNew}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Panel Box Status</label>
+                                <input type="text" class="form-control" th:field="*{checkMeter.panelBoxStatus}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-3">
+                                <label>Meter Body Status</label>
+                                <input type="text" class="form-control" th:field="*{checkMeter.meterBodyStatus}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Terminal Status</label>
+                                <input type="text" class="form-control" th:field="*{checkMeter.terminalStatus}">
+                            </div>
+                            <div class="col-md-3">
+                                <label>Test Terminal Block Status</label>
+                                <input type="text" class="form-control" th:field="*{checkMeter.testTerminalBlockStatus}">
+                            </div>
+                        </div>
+                        <h6 class="meter-title mt-4 mb-3"><i class="bi bi-speedometer2"></i> Check Meter Readings</h6>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kWh Import Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kwhImportStart}">
+                            </div>
+                            <div class="col"><label>kWh Import End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kwhImportEnd}">
+                            </div>
+                            <div class="col"><label>kWh Export Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kwhExportStart}">
+                            </div>
+                            <div class="col"><label>kWh Export End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kwhExportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kVAh Import Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvahImportStart}">
+                            </div>
+                            <div class="col"><label>kVAh Import End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvahImportEnd}">
+                            </div>
+                            <div class="col"><label>kVAh Export Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvahExportStart}">
+                            </div>
+                            <div class="col"><label>kVAh Export End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvahExportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kVArh Lag Import (Q1) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLagImportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lag Import (Q1) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLagImportEnd}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Import (Q2) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLeadImportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Import (Q2) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLeadImportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>kVArh Lag Export (Q3) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLagExportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lag Export (Q3) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLagExportEnd}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Export (Q4) Start</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLeadExportStart}">
+                            </div>
+                            <div class="col"><label>kVArh Lead Export (Q4) End</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.kvarhLeadExportEnd}">
+                            </div>
+                        </div>
+                        <div class="row g-3 mb-2">
+                            <div class="col"><label>Import Power Factor</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.importPowerFactor}">
+                            </div>
+                            <div class="col"><label>Export Power Factor</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.exportPowerFactor}">
+                            </div>
+                            <div class="col"><label>Import Billing MD (kVA)</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.importBillingMD}">
+                            </div>
+                            <div class="col"><label>Export Billing MD (kVA)</label>
+                                <input type="number" step="any" class="form-control" th:field="*{checkMeter.exportBillingMD}">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- REMARKS -->
+                    <div class="mb-4">
+                        <label class="form-label">Remarks/Notes</label>
+                        <textarea class="form-control" rows="3" th:field="*{remarks}" placeholder="Any special remarks or notes..."></textarea>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a th:href="@{/admin/jmr_reports}" class="btn btn-back">
+                            <i class="bi bi-arrow-left-circle"></i> Back
+                        </a>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="bi bi-download"></i> Save &amp; Generate PDF
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

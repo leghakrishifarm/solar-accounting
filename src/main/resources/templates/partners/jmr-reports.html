@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout-partner}">
+<head>
+    <meta charset="UTF-8"/>
+    <title>My JMR Reports</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"/>
+    <style>
+        .page-title {
+            font-weight: 700;
+            color: #17a2b8;
+            margin-bottom: 24px;
+            font-size: 2rem;
+        }
+        .badge-status {
+            font-size: 1rem;
+            padding: 0.45em 1.1em;
+        }
+        .table th, .table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+        @media (max-width: 600px) {
+            .page-title { font-size: 1.1rem; }
+            .table th, .table td { font-size: 0.98rem; padding: 0.25rem; }
+        }
+    </style>
+</head>
+<body>
+<section layout:fragment="content">
+    <div class="container py-3 px-md-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <span class="page-title"><i class="bi bi-clipboard-data me-2"></i>My JMR Reports</span>
+        </div>
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle mb-0">
+                        <thead class="table-info">
+                        <tr>
+                            <th>ID</th>
+                            <th>Plant</th>
+                            <th>Month</th>
+                            <th>Year</th>
+                            <th>Reading Date</th>
+                            <th>Status</th>
+                            <th>Approved PDF</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="jmr : ${reports}">
+                            <td th:text="${jmr.id}"></td>
+                            <td th:text="${jmr.plantName}"></td>
+                            <td th:text="${jmr.month}"></td>
+                            <td th:text="${jmr.year}"></td>
+                            <td th:text="${jmr.readingDate}"></td>
+                            <td>
+                                <span th:text="${jmr.status}"
+                                      th:classappend=" 'badge badge-status ' + (
+                                        ${jmr.status}=='APPROVED' ? 'bg-success' :
+                                        (${jmr.status}=='REJECTED' ? 'bg-danger' : 'bg-secondary'))"></span>
+                            </td>
+                            <td>
+                                <a th:if="${jmr.approvedPdfPath != null}"
+                                   th:href="@{/admin/jmr_reports/approved_pdf/{id}(id=${jmr.id})}"
+                                   class="btn btn-outline-primary btn-sm" target="_blank">
+                                    <i class="bi bi-file-earmark-pdf"></i> View
+                                </a>
+                                <span th:if="${jmr.approvedPdfPath == null}" class="text-muted small">N/A</span>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(reports)}">
+                            <td colspan="7" class="text-center text-muted">No JMR reports found.</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <a th:href="@{/partners/dashboard}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left-circle"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</section>
+</body>
+</html>

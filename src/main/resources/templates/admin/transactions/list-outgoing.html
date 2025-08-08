@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      lang="en"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>Outgoing Payments - Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
+    <style>
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #dc3545;
+            letter-spacing: 0.02em;
+        }
+        .quick-actions {
+            display: flex;
+            gap: .7rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.3rem;
+        }
+        @media (max-width: 600px) {
+            .page-title { font-size: 1.15rem; }
+            .quick-actions { flex-direction: column; gap: .5rem; width: 100%; }
+            .quick-actions a { width: 100%; }
+        }
+        .outgoing-table th, .outgoing-table td {
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+<section layout:fragment="content">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body pb-0">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <span class="page-title mb-0">
+                    <i class="bi bi-arrow-up-right-circle me-2"></i> Outgoing Payments
+                </span>
+                <div class="quick-actions">
+                    <a th:href="@{/admin/transactions/add/outgoing}" class="btn btn-success d-flex align-items-center">
+                        <i class="bi bi-plus-circle me-2"></i> Add Outgoing Payment
+                    </a>
+                    <a th:href="@{/admin/transactions}" class="btn btn-outline-secondary d-flex align-items-center">
+                        <i class="bi bi-arrow-left-circle me-2"></i> Back to All Transactions
+                    </a>
+                </div>
+            </div>
+            <div class="table-responsive mb-3">
+                <table class="table table-striped table-bordered align-middle mb-0 outgoing-table">
+                    <thead class="table-dark">
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Partner</th>
+                        <th>Description</th>
+                        <th>Amount (₹)</th>
+                        <th>Entered By</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="outgoing : ${outgoings}">
+                        <td th:text="${#temporals.format(outgoing.dateTime, 'dd-MM-yyyy HH:mm')}">01-01-2025 12:00</td>
+                        <td th:text="${outgoing.partner != null ? outgoing.partner.name : 'N/A'}">Partner Name</td>
+                        <td th:text="${outgoing.description}">Description</td>
+                        <td th:text="${#numbers.formatDecimal(outgoing.amount, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                        <td th:text="${outgoing.enteredBy != null ? outgoing.enteredBy.name : 'N/A'}">Admin Name</td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(outgoings)}">
+                        <td colspan="5" class="text-center text-muted">No outgoing payments recorded yet.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>
