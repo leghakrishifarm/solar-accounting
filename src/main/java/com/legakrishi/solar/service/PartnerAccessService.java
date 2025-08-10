@@ -19,16 +19,23 @@ public class PartnerAccessService {
 
     private final PartnerRepository partnerRepo;
     private final PartnerSiteRepository partnerSiteRepo;
-
     /** When true, deny access if partner cannot be resolved or doesn't own the site. When false, allow (dev). */
     private final boolean strict;
 
     public PartnerAccessService(PartnerRepository partnerRepo,
                                 PartnerSiteRepository partnerSiteRepo,
-                                @Value("${lkf.security.partnerStrict:false}") boolean strict) {
+                                @Value("${lkf.security.partnerStrict:}") String strictRaw) {
         this.partnerRepo = partnerRepo;
         this.partnerSiteRepo = partnerSiteRepo;
-        this.strict = strict;
+
+        boolean parsed = Boolean.parseBoolean(strictRaw); // false for null/empty/invalid
+        if (strictRaw != null && !strictRaw.isBlank()
+                && !strictRaw.equalsIgnoreCase("true")
+                && !strictRaw.equalsIgnoreCase("false")) {
+            log.warn("Invalid boolean for lkf.security.partnerStrict='{}' → defaulting to false", strictRaw);
+        }
+        this.strict = parsed;
+        log.info("lkf.security.partnerStrict resolved to {}", this.strict);
     }
 
     /** Throws AccessDeniedException if logged-in partner doesn't own siteId (when strict=true). */
@@ -38,22 +45,19 @@ public class PartnerAccessService {
             throw new org.springframework.security.access.AccessDeniedException("Unauthenticated");
         }
 
-        final String username = auth.getName().trim(); // e.g., "partnerA@solar.com"
+        final String username = auth.getName().trim();
         log.debug("PartnerAccessService: resolving partner for username='{}'", username);
 
         Optional<Partner> partnerOpt = Optional.empty();
 
-        // 1) mobile (exact)
         try { partnerOpt = partnerRepo.findByMobile(username); }
         catch (Throwable t) { log.debug("findByMobile skipped/failed: {}", t.toString()); }
 
-        // 2) name (case-insensitive)
         if (partnerOpt.isEmpty()) {
             try { partnerOpt = partnerRepo.findByNameIgnoreCase(username); }
             catch (Throwable t) { log.debug("findByNameIgnoreCase skipped/failed: {}", t.toString()); }
         }
 
-        // 3) linked user.email (only attempt if username looks like an email)
         if (partnerOpt.isEmpty() && username.contains("@")) {
             try { partnerOpt = partnerRepo.findByUserEmail(username); }
             catch (Throwable t) { log.debug("findByUserEmail skipped/failed: {}", t.toString()); }
@@ -63,7 +67,7 @@ public class PartnerAccessService {
             String msg = "Partner not found for username '" + username + "'";
             if (strict) throw new org.springframework.security.access.AccessDeniedException(msg);
             log.warn("PartnerAccessService: {}. Proceeding (strict=false). Configure proper lookup when ready.", msg);
-            return; // allow in non-strict mode so dev/testing can continue
+            return;
         }
 
         var partner = partnerOpt.get();
