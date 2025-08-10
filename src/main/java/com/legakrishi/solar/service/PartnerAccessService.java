@@ -22,13 +22,13 @@ public class PartnerAccessService {
     /** When true, deny access if partner cannot be resolved or doesn't own the site. When false, allow (dev). */
     private final boolean strict;
 
-    public PartnerAccessService(PartnerRepository partnerRepo,
-                                PartnerSiteRepository partnerSiteRepo,
+    public PartnerAccessService(PartnerRepository partnerSiteRepo,
+                                PartnerSiteRepository partnerSiteRepository,
                                 @Value("${lkf.security.partnerStrict:}") String strictRaw) {
-        this.partnerRepo = partnerRepo;
-        this.partnerSiteRepo = partnerSiteRepo;
+        this.partnerRepo = partnerSiteRepo;
+        this.partnerSiteRepo = partnerSiteRepository;
 
-        boolean parsed = Boolean.parseBoolean(strictRaw); // false for null/empty/invalid
+        boolean parsed = Boolean.parseBoolean(strictRaw); // false if null/empty/invalid
         if (strictRaw != null && !strictRaw.isBlank()
                 && !strictRaw.equalsIgnoreCase("true")
                 && !strictRaw.equalsIgnoreCase("false")) {
@@ -50,14 +50,17 @@ public class PartnerAccessService {
 
         Optional<Partner> partnerOpt = Optional.empty();
 
+        // 1) mobile (exact)
         try { partnerOpt = partnerRepo.findByMobile(username); }
         catch (Throwable t) { log.debug("findByMobile skipped/failed: {}", t.toString()); }
 
+        // 2) name (case-insensitive)
         if (partnerOpt.isEmpty()) {
             try { partnerOpt = partnerRepo.findByNameIgnoreCase(username); }
             catch (Throwable t) { log.debug("findByNameIgnoreCase skipped/failed: {}", t.toString()); }
         }
 
+        // 3) linked user.email (only attempt if username looks like an email)
         if (partnerOpt.isEmpty() && username.contains("@")) {
             try { partnerOpt = partnerRepo.findByUserEmail(username); }
             catch (Throwable t) { log.debug("findByUserEmail skipped/failed: {}", t.toString()); }
