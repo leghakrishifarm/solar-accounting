@@ -12,42 +12,40 @@
 
     <h3 class="mb-3" th:text="${form.id == null} ? 'New Device' : 'Edit Device'">Device</h3>
 
-    <!-- bind the command object -->
-    <form th:action="@{/admin/devices/save}" th:object="${form}" method="post" class="card p-3">
-        <input type="hidden" th:field="*{id}"/>
+    <form th:action="@{/admin/devices/save}" method="post" class="card p-3">
+        <input type="hidden" name="id" th:value="${form.id}"/>
 
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">Site *</label>
-                <select class="form-select" th:field="*{siteId}" required>
-                    <option th:each="s : ${sites}" th:value="${s.id}" th:text="${s.name}">Site</option>
+                <select class="form-select" name="siteId" required>
+                    <option th:each="s : ${sites}" th:value="${s.id}" th:text="${s.name}"
+                            th:selected="${form.siteId} == ${s.id}">Site</option>
                 </select>
             </div>
-
             <div class="col-md-6">
                 <label class="form-label">Name *</label>
-                <input class="form-control" th:field="*{name}" required>
+                <input class="form-control" name="name" required th:value="${form.name}">
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Type</label>
-                <select class="form-select" th:field="*{type}">
-                    <!-- each option MUST have value when using th:field -->
-                    <option value="GATEWAY">GATEWAY</option>
-                    <option value="INVERTER">INVERTER</option>
-                    <option value="METER">METER</option>
+                <select class="form-select" name="type" th:value="${form.type}">
+                    <option>GATEWAY</option>
+                    <option>INVERTER</option>
+                    <option>METER</option>
                 </select>
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">Serial No</label>
-                <input class="form-control" th:field="*{serialNo}">
+                <input class="form-control" name="serialNo" th:value="${form.serialNo}">
             </div>
 
             <div class="col-md-6">
                 <label class="form-label">API Token</label>
                 <div class="input-group">
-                    <input class="form-control" th:field="*{apiToken}" placeholder="Auto-generate if empty">
+                    <input class="form-control" name="apiToken" th:value="${form.apiToken}" placeholder="Auto-generate if empty">
                     <button th:if="${form.id != null}" class="btn btn-outline-secondary" type="button"
                             th:onclick="'document.getElementById(\\'regen\\').submit()'">
                         <i class="bi bi-arrow-clockwise me-1"></i> Regenerate
@@ -58,18 +56,9 @@
 
             <div class="col-md-6 d-flex align-items-end">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" th:field="*{active}">
+                    <input class="form-check-input" type="checkbox" name="active" th:checked="${form.active}">
                     <label class="form-check-label">Active</label>
                 </div>
-            </div>
-
-            <div class="col-md-6">
-                <label for="defaultMeterKind" class="form-label">Default Meter</label>
-                <select id="defaultMeterKind" class="form-select" th:field="*{defaultMeterKind}">
-                    <option th:value="">— Not set —</option>
-                    <option th:each="mk : ${meterKinds}" th:value="${mk}" th:text="${mk}"></option>
-                </select>
-                <div class="form-text">Used when the device sends readings without specifying a meter.</div>
             </div>
         </div>
 
@@ -79,7 +68,6 @@
         </div>
     </form>
 
-    <!-- regenerate token form -->
     <form th:id="'regen'" th:action="@{'/admin/devices/' + ${form.id} + '/regenerate-token'}" method="post"></form>
 
 </section>
