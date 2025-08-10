@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout-partner}">
+<head>
+    <title layout:fragment="title">Daily Report</title>
+    <style>
+        @media print {
+          .no-print { display: none !important; }
+          .card { box-shadow: none !important; border: 1px solid #ddd; }
+          body { background: #fff; }
+          .print-header { border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 12px; }
+        }
+        .brand-name { font-size: 1.05rem; font-weight: 600; letter-spacing: .3px; }
+        .muted { color: #6c757d; }
+    </style>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4">
+
+    <!-- Print / Export Header -->
+    <div class="print-header d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <img src="/img/legha_logo.png" alt="Logo" height="36"
+                 onerror="this.style.display='none'"/>
+            <div>
+                <div class="brand-name">Daily Report</div>
+                <div class="muted small">
+                    <b th:text="${siteName}">Site</b>
+                    · Date: <span th:text="${date}">—</span>
+                </div>
+            </div>
+        </div>
+        <div class="no-print">
+            <a th:href="@{/partners/dashboard}" class="btn btn-sm btn-outline-secondary me-2">
+                ← Back
+            </a>
+            <a class="btn btn-sm btn-outline-secondary me-2"
+               th:href="@{/partners/api/export/today.csv(siteId=${siteId})}">
+                Download Today CSV
+            </a>
+            <a class="btn btn-sm btn-outline-secondary me-2"
+               th:href="@{/partners/api/export/month-summary.csv(siteId=${siteId})}">
+                Download Month Summary
+            </a>
+            <button class="btn btn-sm btn-primary" onclick="window.print()">
+                Print / Save PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Summary Row -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="card p-3 shadow-sm border-0">
+                <div class="small muted">Energy Today</div>
+                <div class="h5 mb-0" th:text="${#numbers.formatDecimal(energyTodayKwh,1,1)} + ' kWh'">0.0 kWh</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 shadow-sm border-0">
+                <div class="small muted">Peak Power</div>
+                <div class="h5 mb-0" th:text="${#numbers.formatDecimal(peakPowerKw,1,1)} + ' kW'">0.0 kW</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 shadow-sm border-0">
+                <div class="small muted">Capacity</div>
+                <div class="h5 mb-0" th:text="${capacityKw != null} ? ${#numbers.formatDecimal(capacityKw,1,1)} + ' kW' : '—'">—</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card p-3 shadow-sm border-0">
+                <div class="small muted">CUF (MTD)</div>
+                <div class="h5 mb-0">
+                    <span th:text="${cufPct != null} ? ${#numbers.formatDecimal(cufPct,1,1)} + ' %' : '—'">—</span>
+                    <span class="muted small" th:if="${cufPct != null}">(<span th:text="${monthStr}">yyyy-MM</span>)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts (last 24h) -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+            <h5 class="card-title mb-2"><i class="bi bi-bell-fill me-2 text-danger"></i> Alerts (last 24h)</h5>
+            <div th:if="${#lists.isEmpty(alerts)}" class="muted">No alerts in the last 24 hours.</div>
+            <div th:if="${!#lists.isEmpty(alerts)}" class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Message</th>
+                        <th>Ack</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="a : ${alerts}">
+                        <td th:text="${a.triggeredAt}">2025-08-09T10:00</td>
+                        <td th:text="${a.type}">OFFLINE</td>
+                        <td th:text="${a.message}">message</td>
+                        <td>
+              <span class="badge" th:classappend="${a.acknowledged} ? 'bg-success' : 'bg-secondary'"
+                    th:text="${a.acknowledged} ? 'Ack' : 'New'">Ack</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Raw readings (today) -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h5 class="card-title mb-2"><i class="bi bi-list-check me-2"></i> Today Readings</h5>
+            <div th:if="${#lists.isEmpty(readings)}" class="muted">No readings today.</div>
+            <div th:if="${!#lists.isEmpty(readings)}" class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Power (kW)</th>
+                        <th>Energy (kWh)</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${readings}">
+                        <td th:text="${#temporals.format(r.ts, 'HH:mm:ss')}">10:00:00</td>
+                        <td th:text="${r.powerKw}">0.0</td>
+                        <td th:text="${r.energyKwh}">0.0</td>
+                        <td th:text="${r.status}">OK</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</section>
+</body>
+</html>

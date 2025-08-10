@@ -4,6 +4,23 @@
       layout:decorate="~{fragments/layout-partner}">
 <head>
     <title layout:fragment="title">Partner Dashboard</title>
+
+    <!-- Chart.js for all charts on this page -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+    <style>
+        /* Optional chart height helper */
+        .chart-wrap { height: 300px; }
+        @media (max-width: 991px) { .chart-wrap { height: 260px; } }
+
+        /* Online badge */
+        .lkf-dot{
+          display:inline-block;width:10px;height:10px;border-radius:50%;
+          background:#6c757d; /* gray default */
+        }
+        .lkf-dot.online{ background:#198754; }  /* green */
+        .lkf-dot.offline{ background:#dc3545; } /* red */
+    </style>
 </head>
 <body>
 <section layout:fragment="content">
@@ -108,6 +125,531 @@
             No Last Meter Reading Available.
         </div>
     </div>
+
+    <!-- Live KPIs + Status/Alert badges -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-speedometer2 me-2 text-success"></i> Live Plant KPIs
+                </h5>
+
+                <!-- Site selector: hide dropdown when 0 or 1 sites -->
+                <div class="ms-2 d-flex align-items-center">
+                    <!-- 0 sites -->
+                    <span th:if="${sites == null or #lists.isEmpty(sites)}"
+                          class="badge bg-secondary">No sites</span>
+
+                    <!-- 1 site -->
+                    <span th:if="${sites != null and #lists.size(sites) == 1}"
+                          class="badge bg-info text-dark"
+                          th:text="${sites[0].site.name != null ? sites[0].site.name : ('Site #' + sites[0].site.id)}">
+                    Site
+                  </span>
+
+                    <!-- 2+ sites: show dropdown -->
+                    <form th:if="${sites != null and #lists.size(sites) > 1}"
+                          th:action="@{/partners/dashboard}" method="get" class="d-inline ms-2">
+                        <select class="form-select form-select-sm" name="siteId" onchange="this.form.submit()">
+                            <option th:each="ps : ${sites}"
+                                    th:value="${ps.site.id}"
+                                    th:selected="${ps.site.id == currentSiteId}"
+                                    th:text="${ps.site.name != null ? ps.site.name : ('Site #' + ps.site.id)}">
+                                Site
+                            </option>
+                        </select>
+                    </form>
+                </div>
+
+                <script th:inline="javascript">
+                    /*<![CDATA[*/
+                    (function rememberSite(){
+                      var currentSiteId = /*[[${currentSiteId}]]*/ null;
+
+                      if (currentSiteId) {
+                        try { localStorage.setItem('lkf.siteId', String(currentSiteId)); } catch(e){}
+                      }
+
+                      var urlHasSite = new URLSearchParams(location.search).has('siteId');
+                      if (!urlHasSite) {
+                        var stored = null;
+                        try { stored = localStorage.getItem('lkf.siteId'); } catch(e){}
+
+                        if (stored) {
+                          var sel = document.querySelector('select[name="siteId"]');
+                          if (sel && Array.from(sel.options).some(o => o.value === stored)) {
+                            var u = new URL(location.href);
+                            u.searchParams.set('siteId', stored);
+                            location.replace(u.toString());
+                          }
+                        }
+                      }
+
+                      var sel2 = document.querySelector('select[name="siteId"]');
+                      if (sel2) {
+                        sel2.addEventListener('change', function(){
+                          try { localStorage.setItem('lkf.siteId', String(this.value)); } catch(e){}
+                        });
+                      }
+                    })();
+                     /*]]>*/
+                </script>
+
+                <!-- RIGHT: time badge + ONLINE badge + ALERT badge -->
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-light text-dark">
+                        <i class="bi bi-clock me-1"></i>
+                        <span th:text="${kpis.lastUpdated}">—</span>
+                    </span>
+
+                    <span id="lkf-online" class="badge bg-light text-dark ms-2">
+                      <span class="lkf-dot me-1"></span>
+                      <span id="lkf-online-text">Checking…</span>
+                    </span>
+
+                    <span id="lkf-alert" class="badge bg-danger ms-2 d-none">
+                      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                      <span id="lkf-alert-text">ALERT</span>
+                      <a href="#" id="lkf-ack" class="link-light text-decoration-underline ms-2 small">Acknowledge</a>
+                    </span>
+                </div>
+            </div>
+
+            <div class="row text-center g-3">
+                <div class="col-6 col-md-3">
+                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.currentPowerKw,1,1)} + ' kW'">0.0 kW</div>
+                    <div class="text-muted small">Current Power</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.energyTodayKwh,1,1)} + ' kWh'">0.0 kWh</div>
+                    <div class="text-muted small">Energy Today</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.energyMonthKwh,0,0)} + ' kWh'">0 kWh</div>
+                    <div class="text-muted small">This Month</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.energyTotalKwh,0,0)} + ' kWh'">0 kWh</div>
+                    <div class="text-muted small">Lifetime Energy</div>
+                </div>
+                <a class="btn btn-sm btn-outline-secondary ms-2"
+                   th:href="@{/partners/report/daily(siteId=${currentSiteId})}">
+                    Daily Report
+                </a>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ONLINE status ping -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function statusPing(){
+         fetch(/*[[@{/partners/api/online(siteId=${currentSiteId})}]]*/'')
+            .then(r => r.json())
+            .then(d => {
+              const dot = document.querySelector('#lkf-online .lkf-dot');
+              const text = document.getElementById('lkf-online-text');
+              const online = !!d.online;
+
+              dot.classList.remove('online','offline');
+              dot.classList.add(online ? 'online' : 'offline');
+              text.textContent = online ? 'Online' : 'Offline';
+            })
+            .catch(() => {
+              const dot = document.querySelector('#lkf-online .lkf-dot');
+              const text = document.getElementById('lkf-online-text');
+              dot.classList.remove('online'); dot.classList.add('offline');
+              text.textContent = 'Offline';
+            });
+
+          setTimeout(statusPing, 60000);
+        })();
+        /*]]>*/
+    </script>
+
+    <!-- ALERT badge updater + Acknowledge handler -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function alertPing(){
+          fetch(/*[[@{/partners/api/last-alert(siteId=${currentSiteId})}]]*/'')
+            .then(r => r.json())
+            .then(d => {
+              const el = document.getElementById('lkf-alert');
+              const txt = document.getElementById('lkf-alert-text');
+              if (!el || !txt) return;
+
+              if (d.hasAlert) {
+                el.classList.remove('d-none');
+                txt.textContent = d.message || 'ALERT';
+                el.title = (d.type ? (d.type + ' · ') : '') + (d.triggeredAt || '');
+              } else {
+                el.classList.add('d-none');
+              }
+            })
+            .catch(() => {});
+
+          setTimeout(alertPing, 60000);
+        })();
+
+        document.getElementById('lkf-ack')?.addEventListener('click', function(e){
+          e.preventDefault();
+          fetch(/*[[@{/partners/api/ack-last-alert(siteId=${currentSiteId})}]]*/'')
+            .then(r => r.json())
+            .then(_ => {
+              const el = document.getElementById('lkf-alert');
+              if (el) el.classList.add('d-none');
+            })
+            .catch(()=>{});
+        });
+        /*]]>*/
+    </script>
+
+    <!-- Month-to-date Summary -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar3 me-2"></i> Month Summary (MTD)
+                </h5>
+                <a class="btn btn-sm btn-outline-secondary"
+                   th:href="@{/partners/api/export/month-summary.csv(siteId=${currentSiteId})}">
+                    Download Summary CSV
+                </a>
+                <span id="ms-month" class="badge bg-light text-dark">—</span>
+            </div>
+            <div class="row text-center g-3">
+                <div class="col-6 col-md-3">
+                    <div class="h5 mb-0" id="ms-energy">0.0 kWh</div>
+                    <div class="text-muted small">Energy (MTD)</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="h5 mb-0" id="ms-avg">0.0 kWh/day</div>
+                    <div class="text-muted small">Avg per day</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="h5 mb-0" id="ms-peak">0.0 kW</div>
+                    <div class="text-muted small">Peak Power (MTD)</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="h5 mb-0" id="ms-cuf">—</div>
+                    <div class="text-muted small">CUF (MTD)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function loadMonthSummary(){
+          fetch(/*[[@{/partners/api/month-summary(siteId=${currentSiteId})}]]*/'')
+            .then(r => r.json())
+            .then(d => {
+              document.getElementById('ms-month').textContent = d.month || '—';
+              document.getElementById('ms-energy').textContent = ((d.energyMonthKwh ?? 0).toFixed(1)) + ' kWh';
+              document.getElementById('ms-avg').textContent    = ((d.avgDailyKwh ?? 0).toFixed(1)) + ' kWh/day';
+              document.getElementById('ms-peak').textContent   = ((d.peakPowerKw ?? 0).toFixed(1)) + ' kW';
+              document.getElementById('ms-cuf').textContent    =  (d.cufPct != null) ? (d.cufPct.toFixed(1) + ' %') : '—';
+            })
+            .catch(()=>{});
+          setTimeout(loadMonthSummary, 60000);
+        })();
+         /*]]>*/
+    </script>
+
+    <!-- Energy & Power — Meter-wise (NEW) -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h5 class="card-title mb-0"><i class="bi bi-graph-up me-2"></i> Energy &amp; Power — Meter-wise</h5>
+                <div class="d-flex gap-2">
+                    <select id="daysSelect" class="form-select form-select-sm" style="width:120px">
+                        <option value="7">Last 7 days</option>
+                        <option value="14">Last 14 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                    </select>
+                    <button id="refreshBtn" class="btn btn-sm btn-primary">Refresh</button>
+                </div>
+            </div>
+
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body chart-wrap">
+                            <h6 class="card-title mb-2">Daily AC Active Energy (kWh)</h6>
+                            <canvas id="chAcDaily"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body chart-wrap">
+                            <h6 class="card-title mb-2">Daily AC Export Energy (kWh)</h6>
+                            <canvas id="chAcExportDaily"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body chart-wrap">
+                            <h6 class="card-title mb-2">Daily AC Import Energy (kWh)</h6>
+                            <canvas id="chAcImportDaily"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body chart-wrap">
+                            <h6 class="card-title mb-2">Daily DC Energy (kWh)</h6>
+                            <canvas id="chDcDaily"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-body chart-wrap">
+                            <h6 class="card-title mb-2">Max AC Power (kW)</h6>
+                            <canvas id="chMaxPower"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Partner meter-wise charts script -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function partnerCharts(){
+          const $days = document.getElementById('daysSelect');
+          const $btn  = document.getElementById('refreshBtn');
+
+          const currentSiteId = /*[[${currentSiteId}]]*/ null;
+
+          const endpoints = {
+            series: (siteId, days) => `/partners/charts/day-meter-series?siteId=${siteId}&days=${days}`,
+            labels: (siteId)       => `/partners/charts/meter-labels?siteId=${siteId}`
+          };
+
+          let charts = {
+            chAcDaily: null,
+            chAcExportDaily: null,
+            chAcImportDaily: null,
+            chDcDaily: null,
+            chMaxPower: null
+          };
+
+          const meterOrder = ['MAIN', 'STANDBY', 'CHECK'];
+          const meterColors = {
+            MAIN:    'rgba(54, 162, 235, 0.9)',
+            STANDBY: 'rgba(255, 159, 64, 0.9)',
+            CHECK:   'rgba(75, 192, 192, 0.9)'
+          };
+
+          let meterLabels = { MAIN: 'MAIN', STANDBY: 'STANDBY', CHECK: 'CHECK' };
+
+          async function loadLabels(siteId) {
+            const res = await fetch(endpoints.labels(siteId), { cache: 'no-store' });
+            if (res.ok) meterLabels = await res.json();
+          }
+
+          function toDatasets(metric, series) {
+            return meterOrder.map(m => ({
+              label: meterLabels[m] || m,
+              data: (series[metric]?.[m]) || [],
+              borderColor: meterColors[m],
+              backgroundColor: meterColors[m],
+              tension: 0.25,
+              pointRadius: 0,
+              borderWidth: 2
+            }));
+          }
+
+          function makeConfig(labels, datasets, yTitle) {
+            return {
+              type: 'line',
+              data: { labels, datasets },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                  legend: { position: 'bottom' },
+                  tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                  x: { ticks: { autoSkip: true, maxTicksLimit: 12 } },
+                  y: { beginAtZero: true, title: { display: true, text: yTitle } }
+                }
+              }
+            };
+          }
+
+          function upsertChart(instance, canvasId, config) {
+            const ctx = document.getElementById(canvasId)?.getContext('2d');
+            if (!ctx) return instance;
+            if (instance) { instance.destroy(); }
+            return new Chart(ctx, config);
+          }
+
+          function renderAll(labels, series) {
+            const cfgAcDaily   = makeConfig(labels, toDatasets('acActiveEnergyKwh', series), 'kWh');
+            const cfgAcExport  = makeConfig(labels, toDatasets('acExportEnergyKwh', series), 'kWh');
+            const cfgAcImport  = makeConfig(labels, toDatasets('acImportEnergyKwh', series), 'kWh');
+            const cfgDcDaily   = makeConfig(labels, toDatasets('dcEnergyKwh',       series), 'kWh');
+            const cfgMaxPower  = makeConfig(labels, toDatasets('maxAcPowerKw',      series), 'kW');
+
+            charts.chAcDaily        = upsertChart(charts.chAcDaily,        'chAcDaily',        cfgAcDaily);
+            charts.chAcExportDaily  = upsertChart(charts.chAcExportDaily,  'chAcExportDaily',  cfgAcExport);
+            charts.chAcImportDaily  = upsertChart(charts.chAcImportDaily,  'chAcImportDaily',  cfgAcImport);
+            charts.chDcDaily        = upsertChart(charts.chDcDaily,        'chDcDaily',        cfgDcDaily);
+            charts.chMaxPower       = upsertChart(charts.chMaxPower,       'chMaxPower',       cfgMaxPower);
+          }
+
+          async function loadAndRender() {
+            const days = $days?.value ?? '30';
+            if (!currentSiteId) return;
+
+            await loadLabels(currentSiteId);
+
+            const res = await fetch(endpoints.series(currentSiteId, days), { cache: 'no-store' });
+            if (!res.ok) return;
+            const data = await res.json();
+            renderAll(data.labels, data.series);
+          }
+
+          $btn?.addEventListener('click', loadAndRender);
+          $days?.addEventListener('change', loadAndRender);
+
+          document.addEventListener('DOMContentLoaded', loadAndRender);
+        })();
+        /*]]>*/
+    </script>
+
+    <!-- Today Power Curve -->
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up-arrow me-2"></i> Today Power Curve
+                </h5>
+                <span id="tp-date" class="badge bg-light text-dark">—</span>
+            </div>
+            <canvas id="powerChart" height="120"></canvas>
+            <div class="text-muted small mt-2">
+                <span id="tp-max">Max: —</span> · <span id="tp-energy">Energy Today: —</span>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary"
+               th:href="@{/partners/api/export/today.csv(siteId=${currentSiteId})}">
+                Download CSV
+            </a>
+            <a class="btn btn-sm btn-outline-secondary"
+               th:href="@{/partners/api/export/month.csv(siteId=${currentSiteId})}">
+                Download Month CSV
+            </a>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function loadTodayPower(){
+         fetch(/*[[@{/partners/api/today-power(siteId=${currentSiteId})}]]*/'')
+            .then(r => r.json())
+            .then(data => {
+              document.getElementById('tp-date').textContent = data.date || '';
+              document.getElementById('tp-max').textContent = 'Max: ' + (data.maxPower ?? 0).toFixed(1) + ' kW';
+              document.getElementById('tp-energy').textContent = 'Energy Today: ' + (data.energyToday ?? 0).toFixed(1) + ' kWh';
+
+              const ctx = document.getElementById('powerChart');
+              if (!ctx) return;
+
+              if (window._todayChart) { window._todayChart.destroy(); }
+
+              window._todayChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                  labels: data.labels,
+                  datasets: [{ label: 'kW', data: data.values, tension: 0.3 }]
+                },
+                options: {
+                  responsive: true,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'kW' } },
+                    x: { ticks: { maxTicksLimit: 12 } }
+                  }
+                }
+              });
+            })
+            .catch(() => { /* ignore for now */ });
+
+          setTimeout(loadTodayPower, 60000);
+        })();
+        /*]]>*/
+    </script>
+
+    <!-- Recent Alerts (last 24h) -->
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <h5 class="card-title mb-2">
+                <i class="bi bi-bell-fill me-2 text-danger"></i> Recent Alerts
+            </h5>
+
+            <a class="btn btn-sm btn-outline-secondary"
+               th:href="@{/partners/api/alerts/export.csv(siteId=${currentSiteId})}">
+                Download Alerts CSV
+            </a>
+            <ul class="list-group list-group-flush" id="alertsList"></ul>
+            <div id="alertsEmpty" class="text-muted small">No alerts in the last 24 hours.</div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        (function loadAlerts(){
+          fetch(/*[[@{/partners/api/alerts/latest(siteId=${currentSiteId})}]]*/'')
+            .then(r => r.json())
+            .then(arr => {
+              const list = document.getElementById('alertsList');
+              const empty = document.getElementById('alertsEmpty');
+              list.innerHTML = '';
+
+              if (!arr || arr.length === 0) {
+                empty.style.display = 'block';
+                return;
+              }
+              empty.style.display = 'none';
+
+              arr.forEach(a => {
+                const typeClass = (a.type === 'OFFLINE') ? 'bg-danger' : 'bg-warning text-dark';
+                const ackClass = a.acknowledged ? 'bg-success' : 'bg-secondary';
+                const ackText  = a.acknowledged ? 'Ack' : 'New';
+
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-start';
+                li.innerHTML = `
+                  <div class="me-3">
+                    <div class="mb-1">
+                      <span class="badge ${typeClass} me-2">${a.type}</span>
+                      <span>${a.message ?? ''}</span>
+                    </div>
+                    <div class="small text-muted">${a.triggeredAt ?? ''}</div>
+                  </div>
+                  <span class="badge ${ackClass}">${ackText}</span>
+                `;
+                list.appendChild(li);
+              });
+            })
+            .catch(() => {});
+
+          setTimeout(loadAlerts, 60000);
+        })();
+        /*]]>*/
+    </script>
 
 </section>
 </body>

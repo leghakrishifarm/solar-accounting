@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout-partner}">
+<head>
+    <title>Document Library</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
+    <style>
+        .doc-card {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .doc-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .doc-meta .badge {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4">
+
+    <!-- Page title -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <h2 class="mb-0">
+            <i class="bi bi-folder2-open text-primary me-2"></i>Document Library
+        </h2>
+    </div>
+
+    <!-- Filter form -->
+    <form class="row g-2 mb-4">
+        <div class="col-md-4 col-sm-8">
+            <input type="text" class="form-control" name="category" placeholder="Filter by category"
+                   th:value="${category}">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary"><i class="bi bi-filter me-1"></i>Apply</button>
+        </div>
+    </form>
+
+    <!-- Empty state -->
+    <div th:if="${#lists.isEmpty(docs)}" class="alert alert-info rounded shadow-sm">
+        <i class="bi bi-info-circle me-1"></i> No documents available.
+    </div>
+
+    <!-- Document list -->
+    <div class="row g-3" th:if="${!#lists.isEmpty(docs)}">
+        <div class="col-lg-4 col-md-6" th:each="d : ${docs}">
+            <a th:href="@{'/library/download/' + ${d.id}}" class="text-decoration-none text-reset">
+                <div class="card doc-card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title mb-2" th:text="${d.title}">Title</h5>
+                        <div class="doc-meta mb-3">
+                            <span class="badge bg-secondary me-1" th:text="${d.category}">Category</span>
+                            <span class="badge bg-light text-dark me-1" th:text="${d.originalName}">file.pdf</span>
+                            <span class="badge bg-light text-dark" th:text="${#numbers.formatInteger(d.sizeBytes/1024,0)} + ' KB'">123 KB</span>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="bi bi-download me-1"></i>Click to download
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+</section>
+</body>
+</html>

@@ -15,12 +15,26 @@
         <a class="nav-link" th:href="@{/admin/transactions}" th:classappend="${page == 'transactions'} ? 'active' : ''">
             <i class="bi bi-cash-coin me-2"></i>Transactions
         </a>
+        <li class="nav-item">
+            <a class="nav-link" th:href="@{/admin/devices}">
+                <i class="bi bi-cpu me-2"></i> Devices
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" th:href="@{/admin/sites}">
+                <i class="bi bi-cpu me-2"></i> Sites CUF
+            </a>
+        </li>
         <a class="nav-link" th:href="@{/admin/jmr_reports}" th:classappend="${page == 'jmr'} ? 'active' : ''">
             <i class="bi bi-clipboard-data me-2"></i>JMR Reports
         </a>
         <a class="nav-link" th:href="@{/admin/bills}" th:classappend="${page == 'bills'} ? 'active' : ''">
             <i class="bi bi-file-earmark-text me-2"></i>Bills
         </a>
+        <a class="nav-link" th:href="@{/admin/library}" th:classappend="${page == 'library'} ? 'active' : ''">
+            <i class="bi bi-file-earmark-text me-2"></i>View Farm Document
+        </a>
+
         <hr class="w-100 my-2"/>
         <form th:action="@{/logout}" method="post" style="display: inline;">
             <button type="submit" class="nav-link btn btn-link w-100 text-start px-0" style="color: inherit; text-decoration: none;">

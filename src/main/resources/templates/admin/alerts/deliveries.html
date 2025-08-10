@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title layout:fragment="title">Admin · Alert Deliveries</title>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Admin · Alert Deliveries</h2>
+        <div>
+            <a class="btn btn-sm btn-outline-secondary me-1" th:href="@{/admin/alert-deliveries}">All</a>
+            <a class="btn btn-sm btn-outline-secondary me-1" th:href="@{/admin/alert-deliveries(channel='WHATSAPP')}">WhatsApp</a>
+            <a class="btn btn-sm btn-outline-secondary me-1" th:href="@{/admin/alert-deliveries(channel='EMAIL')}">Email</a>
+            <a class="btn btn-sm btn-outline-secondary" th:href="@{/admin/alert-deliveries(channel='WEBHOOK')}">Webhook</a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead class="table-light">
+            <tr class="text-nowrap">
+                <th style="width: 160px;">Attempted</th>
+                <th style="width: 90px;">Channel</th>
+                <th style="width: 80px;">Status</th>
+                <th style="width: 90px;">HTTP</th>
+                <th style="width: 110px;">Code</th>
+                <th>Message</th>
+                <th style="width: 110px;">Alert ID</th>
+                <th>Response</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="d : ${deliveries}">
+                <td th:text="${#temporals.format(d.attemptedAt, 'yyyy-MM-dd HH:mm:ss')}">2025-08-10 01:23:45</td>
+                <td th:text="${d.channel}">WHATSAPP</td>
+                <td>
+          <span class="badge" th:classappend="${d.success} ? 'bg-success' : 'bg-danger'"
+                th:text="${d.success ? 'OK' : 'FAIL'}">OK</span>
+                </td>
+                <td th:text="${d.httpStatus}">200</td>
+                <td th:text="${d.code}">OK</td>
+                <td th:text="${d.message}">Message</td>
+                <td>
+          <span th:if="${d.alert != null}">
+            <a th:href="@{|/admin/alert-deliveries/alert/${d.alert.id}|}" th:text="${d.alert.id}">1</a>
+          </span>
+                    <span th:if="${d.alert == null}" class="text-muted">—</span>
+                </td>
+                <td>
+                    <details th:if="${d.responseBody != null}">
+                        <summary>view</summary>
+                        <pre class="small" th:text="${d.responseBody}"></pre>
+                    </details>
+                    <span th:if="${d.responseBody == null}" class="text-muted">—</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</section>
+</body>
+</html>

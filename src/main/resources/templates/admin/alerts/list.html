@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>Alerts</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0"><i class="bi bi-bell-fill me-2 text-danger"></i>Alerts</h3>
+    </div>
+
+    <div th:if="${#lists.isEmpty(alerts)}" class="alert alert-info">No alerts yet.</div>
+
+    <div class="table-responsive" th:if="${!#lists.isEmpty(alerts)}">
+        <table class="table table-striped align-middle">
+            <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>When</th>
+                <th>Type</th>
+                <th>Site</th>
+                <th>Device</th>
+                <th>Message</th>
+                <th>Ack</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="a, i : ${alerts}">
+                <td th:text="${i.index + 1}">1</td>
+                <td th:text="${a.triggeredAt}">2025-08-09T16:07</td>
+                <td><span class="badge bg-danger" th:text="${a.type}">OFFLINE</span></td>
+                <td th:text="${a.site != null ? a.site.name : '-'}">Site</td>
+                <td th:text="${a.device != null ? a.device.name : ('#' + a.device.id)}">Device</td>
+                <td th:text="${a.message}">Message</td>
+                <td>
+          <span class="badge" th:classappend="${a.acknowledged} ? 'bg-success' : 'bg-secondary'"
+                th:text="${a.acknowledged} ? 'Yes' : 'No'">No</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+</body>
+</html>

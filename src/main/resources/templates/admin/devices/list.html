@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>Devices</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <h2 class="mb-2"><i class="bi bi-cpu me-2 text-primary"></i>Devices</h2>
+        <a class="btn btn-success" th:href="@{/admin/devices/new}">
+            <i class="bi bi-plus-lg me-1"></i> New Device
+        </a>
+    </div>
+
+    <form class="row g-2 mb-3" method="get">
+        <div class="col-auto">
+            <select class="form-select" name="siteId">
+                <option value="" th:selected="${siteId == null}">All Sites</option>
+                <option th:each="s : ${sites}"
+                        th:value="${s.id}"
+                        th:text="${s.name}"
+                        th:selected="${siteId != null and siteId == s.id}">
+                </option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary" type="submit">
+                <i class="bi bi-filter me-1"></i>Filter
+            </button>
+        </div>
+    </form>
+
+    <div th:if="${#lists.isEmpty(devices)}" class="alert alert-info">
+        No devices found.
+    </div>
+
+    <div class="table-responsive" th:if="${!#lists.isEmpty(devices)}">
+        <table class="table table-striped align-middle">
+            <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Site</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Serial</th>
+                <th>Token</th>
+                <th>Active</th>
+                <th>Last Seen</th>
+                <th>Default Meter</th>
+                <th class="text-end">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="d, i : ${devices}">
+                <td th:text="${i.index + 1}">1</td>
+                <td th:text="${d.site.name}">Site</td>
+                <td th:text="${d.name}">Gateway</td>
+                <td th:text="${d.type}">GATEWAY</td>
+                <td th:text="${d.serialNo}">SN</td>
+                <td class="small">
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" th:value="${d.apiToken}" readonly th:id="|tok-${d.id}|">
+                        <button class="btn btn-outline-secondary" type="button"
+                                th:onclick="|copyToken(${d.id})|" title="Copy token">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+          <span class="badge"
+                th:classappend="${d.active} ? 'bg-success' : 'bg-secondary'"
+                th:text="${d.active} ? 'Yes' : 'No'">Yes</span>
+                </td>
+
+                <td th:text="${d.lastSeen != null ? #temporals.format(d.lastSeen, 'yyyy-MM-dd HH:mm') : '—'}">—</td>
+
+                <!-- show enum or '—' -->
+                <td th:text="${d.defaultMeterKind} ?: '—'">—</td>
+
+                <td class="text-end text-nowrap">
+                    <a class="btn btn-sm btn-primary" th:href="@{'/admin/devices/' + ${d.id} + '/edit'}" title="Edit">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                    <form th:action="@{'/admin/devices/' + ${d.id} + '/toggle'}" method="post" class="d-inline">
+                        <button class="btn btn-sm btn-outline-warning"
+                                th:title="${d.active} ? 'Deactivate' : 'Activate'">
+                            <i class="bi" th:classappend="${d.active} ? 'bi-pause-circle' : 'bi-play-circle'"></i>
+                        </button>
+                    </form>
+                    <form th:action="@{'/admin/devices/' + ${d.id} + '/delete'}" method="post" class="d-inline"
+                          onsubmit="return confirm('Delete this device?')">
+                        <button class="btn btn-sm btn-danger" title="Delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function copyToken(id){
+          const inp = document.getElementById('tok-' + id);
+          if(!inp) return;
+          inp.select();
+          inp.setSelectionRange(0, 99999);
+          navigator.clipboard?.writeText(inp.value);
+        }
+    </script>
+</section>
+</body>
+</html>

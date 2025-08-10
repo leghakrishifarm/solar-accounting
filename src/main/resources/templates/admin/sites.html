@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title layout:fragment="title">Admin · Sites</title>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Admin · Sites</h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleAll(true)">Expand all</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" onclick="toggleAll(false)">Collapse all</button>
+        </div>
+    </div>
+
+    <div th:if="${msg}" class="alert alert-success" th:text="${msg}"></div>
+    <div th:if="${#lists.isEmpty(sites)}" class="alert alert-info">No sites found.</div>
+
+    <div th:if="${!#lists.isEmpty(sites)}" class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead class="table-light">
+            <tr class="text-nowrap">
+                <th style="width:70px;">ID</th>
+                <th>Name / Location</th>
+                <th style="width:240px;">Quick Info</th>
+                <th style="width:220px;">Status</th>
+                <th style="width:120px;">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <!-- one loop that renders summary row + details row per site -->
+            <th:block th:each="s : ${sites}">
+
+                <!-- Summary row -->
+                <tr>
+                    <td class="fw-semibold" th:text="${s.id}">1</td>
+
+                    <td>
+                        <div class="fw-semibold" th:text="${s.name}">Site Name</div>
+                        <div class="text-muted small" th:text="${s.location}">Location</div>
+                        <div class="text-muted small">TZ: <span th:text="${s.timezone}">Asia/Kolkata</span></div>
+                    </td>
+
+                    <td class="small">
+                        <div>Capacity:
+                            <span class="fw-semibold" th:text="${s.capacityKw != null ? s.capacityKw : '—'}">—</span> kW
+                        </div>
+                        <div>Daylight:
+                            <span th:text="${s.daylightStart != null ? #temporals.format(s.daylightStart, 'HH:mm') : '09:00'}">09:00</span>–<span th:text="${s.daylightEnd != null ? #temporals.format(s.daylightEnd, 'HH:mm') : '17:00'}">17:00</span>
+                        </div>
+                        <div>Offline thr:
+                            <span th:text="${s.offlineThresholdMinutes != null ? s.offlineThresholdMinutes : '—'}">—</span> min
+                        </div>
+                    </td>
+
+                    <td class="text-nowrap">
+                        <span class="badge" th:classappend="${s.capacityKw != null} ? 'bg-success' : 'bg-secondary'">
+                          Cap: <span th:text="${s.capacityKw != null ? 'OK' : 'Not set'}">OK</span>
+                        </span>
+                        <div class="mt-1">
+                            <span class="badge me-1" th:classappend="${s.notifyEmailEnabled} ? 'bg-success' : 'bg-secondary'">Email</span>
+                            <span class="badge me-1" th:classappend="${s.notifyWebhookEnabled} ? 'bg-success' : 'bg-secondary'">Webhook</span>
+                            <span class="badge" th:classappend="${s.notifyWhatsappEnabled} ? 'bg-success' : 'bg-secondary'">WA</span>
+                        </div>
+                    </td>
+
+                    <td>
+                        <button class="btn btn-sm btn-primary"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                th:attr="data-bs-target=${'#cfg-' + s.id}"
+                                aria-expanded="false"
+                                th:aria-controls="${'cfg-' + s.id}">
+                            Configure
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- Expanded config row -->
+                <tr>
+                    <td colspan="5" class="p-0 border-0">
+                        <div class="collapse border-top bg-light" th:attr="id=${'cfg-' + s.id}">
+                            <div class="p-3">
+                                <div class="row g-3">
+                                    <!-- Left: Plant Settings -->
+                                    <div class="col-12 col-lg-6">
+                                        <div class="card shadow-sm border-0 h-100">
+                                            <div class="card-body">
+                                                <h5 class="card-title mb-3">Plant Settings</h5>
+
+                                                <!-- Capacity -->
+                                                <form th:action="@{|/admin/sites/${s.id}/capacity|}" method="post" class="row g-2 mb-3">
+                                                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                                    <div class="col-7">
+                                                        <label class="form-label small mb-1">Capacity (kW)</label>
+                                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                                               name="capacityKw" th:value="${s.capacityKw}" placeholder="1500.00">
+                                                    </div>
+                                                    <div class="col-5 d-flex align-items-end">
+                                                        <button class="btn btn-sm btn-primary">Save</button>
+                                                    </div>
+                                                    <div class="col-12 small text-muted">Used for CUF% & planning.</div>
+                                                </form>
+
+                                                <!-- Daylight -->
+                                                <form th:action="@{|/admin/sites/${s.id}/daylight|}" method="post" class="row g-2 mb-3">
+                                                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                                    <div class="col-4">
+                                                        <label class="form-label small mb-1">Start</label>
+                                                        <input type="time" class="form-control form-control-sm" name="daylightStart"
+                                                               th:value="${s.daylightStart != null ? #temporals.format(s.daylightStart, 'HH:mm') : ''}">
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <label class="form-label small mb-1">End</label>
+                                                        <input type="time" class="form-control form-control-sm" name="daylightEnd"
+                                                               th:value="${s.daylightEnd != null ? #temporals.format(s.daylightEnd, 'HH:mm') : ''}">
+                                                    </div>
+                                                    <div class="col-4 d-flex align-items-end">
+                                                        <button class="btn btn-sm btn-outline-primary">Save</button>
+                                                    </div>
+                                                    <div class="col-12 small text-muted">
+                                                        Empty = default (09:00–17:00).
+                                                    </div>
+                                                </form>
+
+                                                <!-- Zero threshold -->
+                                                <form th:action="@{|/admin/sites/${s.id}/zero-threshold|}" method="post" class="row g-2 mb-3">
+                                                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                                    <div class="col-7">
+                                                        <label class="form-label small mb-1">Zero Power (kW)</label>
+                                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                                               name="zeroThresholdKw" th:value="${s.zeroThresholdKw}" placeholder="0.20">
+                                                    </div>
+                                                    <div class="col-5 d-flex align-items-end">
+                                                        <button class="btn btn-sm btn-outline-primary">Save</button>
+                                                    </div>
+                                                    <div class="col-12 small text-muted">Blank = global default.</div>
+                                                </form>
+
+                                                <!-- Offline threshold -->
+                                                <form th:action="@{|/admin/sites/${s.id}/offline-threshold|}" method="post" class="row g-2">
+                                                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                                    <div class="col-7">
+                                                        <label class="form-label small mb-1">Offline Threshold (min)</label>
+                                                        <input type="number" step="1" min="1" class="form-control form-control-sm"
+                                                               name="offlineThresholdMinutes" th:value="${s.offlineThresholdMinutes}" placeholder="15">
+                                                    </div>
+                                                    <div class="col-5 d-flex align-items-end">
+                                                        <button class="btn btn-sm btn-outline-primary">Save</button>
+                                                    </div>
+                                                    <div class="col-12 small text-muted">Blank = global default.</div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right: Notifications -->
+                                    <div class="col-12 col-lg-6">
+                                        <div class="card shadow-sm border-0 h-100">
+                                            <div class="card-body">
+                                                <h5 class="card-title mb-3">Notifications</h5>
+
+                                                <!-- Webhook -->
+                                                <form th:action="@{|/admin/sites/${s.id}/webhook|}" method="post" class="row g-2 mb-3">
+                                                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                                    <div class="col-3 d-flex align-items-end">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="enabled" value="true"
+                                                                   th:checked="${s.notifyWebhookEnabled == true}">
+                                                            <label class="form-check-label small">Webhook</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label small mb-1">URL</label>
+                                                        <input type="url" class="form-control form-control-sm" name="url"
+                                                               th:value="${s.notifyWebhookUrl}" placeholder="https://example.com/hooks/alert">
+                                                    </div>
+                                                    <div class="col-3 d-flex align-items-end">
+                                                        <button class="btn btn-sm btn-outline-primary w-100">Save</button>
+                                                    </div>
+                                                    <div class="col-12 small text-muted">We POST JSON on new alerts.</div>
+                                                </form>
+
+                                                <!-- Email -->
+                                                <form th:action="@{|/admin/sites/${s.id}/email|}" method="post" class="row g-2 mb-2">
+                                                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                                    <div class="col-3 d-flex align-items-center">
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" name="enabled" value="true"
+                                                                   th:checked="${s.notifyEmailEnabled == true}">
+                                                            <label class="form-check-label small">Enable</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-7">
+                                                        <input type="email" class="form-control form-control-sm" name="to"
+                                                               th:value="${s.notifyEmailTo}" placeholder="alerts@example.com">
+                                                    </div>
+                                                    <div class="col-2">
+                                                        <button class="btn btn-sm btn-outline-primary w-100">Save</button>
+                                                    </div>
+                                                </form>
+
+                                                <form th:action="@{|/admin/sites/${s.id}/email-test|}" method="post" class="mb-3">
+                                                    <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+                                                    <button class="btn btn-sm btn-secondary">Send Test Email</button>
+                                                </form>
+                                                <div class="small text-muted mb-3">Plain text email on new alerts.</div>
+
+                                                <!-- WhatsApp -->
+                                                <div>
+                                                    <form th:action="@{|/admin/sites/${s.id}/whatsapp|}" method="post" class="row g-2 mb-2">
+                                                        <input type="hidden" name="_csrf" th:value="${_csrf.token}"/>
+
+                                                        <div class="col-3 d-flex align-items-center">
+                                                            <div class="form-check">
+                                                                <input class="form-check-input" type="checkbox" name="enabled" value="true"
+                                                                       th:checked="${s.notifyWhatsappEnabled == true}">
+                                                                <label class="form-check-label small">Enable</label>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="col-4">
+                                                            <input type="text" class="form-control form-control-sm" name="to"
+                                                                   th:value="${s.notifyWhatsappTo}" placeholder="919XXXXXXXXX">
+                                                            <div class="small text-muted">Country code, no +/spaces</div>
+                                                        </div>
+
+                                                        <div class="col-3">
+                                                            <select class="form-select form-select-sm" name="template">
+                                                                <option value="hello_world"
+                                                                        th:selected="${s.notifyWhatsappTemplate == null || s.notifyWhatsappTemplate == 'hello_world'}">
+                                                                    hello_world
+                                                                </option>
+                                                                <option value="solar_offline"
+                                                                        th:selected="${s.notifyWhatsappTemplate == 'solar_offline'}">
+                                                                    solar_offline
+                                                                </option>
+                                                            </select>
+                                                            <div class="small text-muted">Use approved template</div>
+                                                        </div>
+
+                                                        <div class="col-2">
+                                                            <button class="btn btn-sm btn-outline-primary w-100">Save</button>
+                                                        </div>
+                                                    </form>
+
+                                                    <div class="d-flex gap-2">
+                                                        <form th:action="@{|/admin/sites/${s.id}/whatsapp-test|}" method="get" class="d-inline">
+                                                            <button class="btn btn-sm btn-secondary">Send Template Test</button>
+                                                        </form>
+
+                                                        <form th:action="@{|/admin/sites/${s.id}/whatsapp-session-test|}" method="get" class="d-inline">
+                                                            <button class="btn btn-sm btn-outline-secondary">Send Session Text</button>
+                                                        </form>
+                                                    </div>
+
+                                                    <div class="small text-muted mt-1">
+                                                        <code>solar_offline</code> vars: <b>SITE, DEVICE, SINCE(HH:mm), DURATION(min)</b> ·
+                                                        Session Text requires the user to have messaged you in the last 24h.
+                                                    </div>
+                                            </div>
+                                    </div>
+                                </div> <!-- /row -->
+                            </div> <!-- /p-3 -->
+                        </div> <!-- /collapse -->
+                    </td>
+                </tr>
+
+            </th:block>
+            </tbody>
+        </table>
+    </div>
+
+    <style>
+        .form-control-sm, .form-select-sm { min-height: 32px; }
+    </style>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        function toggleAll(expand){
+          document.querySelectorAll('.collapse').forEach(el=>{
+            const bs = bootstrap.Collapse.getOrCreateInstance(el, {toggle:false});
+            expand ? bs.show() : bs.hide();
+          });
+        }
+        /*]]>*/
+    </script>
+
+</section>
+</body>
+</html>

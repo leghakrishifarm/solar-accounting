@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>Upload Document</title>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4" style="max-width: 720px;">
+
+    <h2 class="mb-3">Upload Document</h2>
+
+    <form th:action="@{/admin/library/upload}" method="post" enctype="multipart/form-data" class="card p-3">
+        <div class="mb-3">
+            <label class="form-label">Title *</label>
+            <input class="form-control" name="title" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Category</label>
+            <input class="form-control" name="category" placeholder="e.g. Agreement, JMR, Invoice">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">File *</label>
+            <input type="file" class="form-control" name="file" required>
+            <div class="form-text">Max 20MB (configurable).</div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-success"><i class="bi bi-upload"></i> Upload</button>
+            <a class="btn btn-secondary" th:href="@{/admin/library}">Cancel</a>
+        </div>
+    </form>
+
+</section>
+</body>
+</html>

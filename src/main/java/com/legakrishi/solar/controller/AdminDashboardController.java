@@ -16,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import com.legakrishi.solar.repository.SiteRepository;
 
 import java.util.Optional;
 
@@ -28,6 +29,7 @@ public class AdminDashboardController {
     private final BillRepository billRepo;
     private final UserRepository userRepo;
     private final JmrReportRepository jmrReportRepo;
+    private final SiteRepository siteRepo;
 
     @Autowired
     public AdminDashboardController(
@@ -35,12 +37,15 @@ public class AdminDashboardController {
             TransactionRepository transRepo,
             BillRepository billRepo,
             UserRepository userRepo,
-            JmrReportRepository jmrReportRepo) {
+            JmrReportRepository jmrReportRepo,
+            SiteRepository siteRepo)
+    {
         this.partnerRepo = partnerRepo;
         this.transRepo = transRepo;
         this.billRepo = billRepo;
         this.userRepo = userRepo;
         this.jmrReportRepo = jmrReportRepo;
+        this.siteRepo = siteRepo;
     }
 
     @GetMapping("/dashboard")
@@ -92,7 +97,12 @@ public class AdminDashboardController {
             model.addAttribute("mainMeter", null);
             model.addAttribute("checkMeter", null);
         }
+        var sites = siteRepo.findAll();
+        model.addAttribute("sites", sites);
+        model.addAttribute("defaultSiteId", sites.isEmpty() ? null : sites.get(0).getId());
+
         model.addAttribute("page", "dashboard");
+
         return "admin/dashboard";
     }
 }

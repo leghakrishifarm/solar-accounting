@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @EnableMethodSecurity(prePostEnabled = true)
 @Configuration
@@ -44,13 +45,19 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .authenticationProvider(authenticationProvider())
+
+                // ✅ allow device/simulator POSTs without CSRF token
+                .csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/iot/**")))
+
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/login",
                                 "/register",
                                 "/css/**",
                                 "/js/**",
-                                "/api/jmr/pdf"  // <-- allow this without auth
+                                "/api/jmr/pdf",
+                                // ✅ allow ingest API without login
+                                "/api/iot/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -60,6 +67,7 @@ public class SecurityConfig {
                         .permitAll()
                 )
                 .logout(logout -> logout.permitAll());
+
         return http.build();
     }
 }

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{fragments/layout}">
+<head>
+    <title>Document Library</title>
+</head>
+<body>
+<section layout:fragment="content" class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Library</h2>
+        <a class="btn btn-success" th:href="@{/admin/library/new}">
+            <i class="bi bi-upload"></i> Upload
+        </a>
+    </div>
+
+    <form class="row g-2 mb-3">
+        <div class="col-auto">
+            <input type="text" class="form-control" name="category" placeholder="Filter by category"
+                   th:value="${category}">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary">Apply</button>
+        </div>
+    </form>
+
+    <div th:if="${#lists.isEmpty(docs)}" class="alert alert-info">No documents yet.</div>
+
+    <div class="table-responsive" th:if="${!#lists.isEmpty(docs)}">
+        <table class="table table-striped align-middle">
+            <thead class="table-dark">
+            <tr>
+                <th>#</th><th>Title</th><th>Category</th><th>Original Name</th><th>Size</th><th>Uploaded</th><th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="d, i : ${docs}">
+                <td th:text="${i.index + 1}">1</td>
+                <td th:text="${d.title}">Title</td>
+                <td th:text="${d.category}">Category</td>
+                <td th:text="${d.originalName}">file.pdf</td>
+                <td th:text="${#numbers.formatInteger(d.sizeBytes/1024,0)} + ' KB'">123 KB</td>
+                <td th:text="${#temporals.format(d.uploadedAt, 'dd MMM yyyy HH:mm')}">date</td>
+                <td class="text-nowrap">
+                    <a class="btn btn-sm btn-primary"
+                       th:href="@{'/library/download/' + ${d.id}}">
+                        <i class="bi bi-download"></i>
+                    </a>
+                    <form th:action="@{'/admin/library/' + ${d.id} + '/delete'}" method="post" class="d-inline"
+                          onsubmit="return confirm('Delete this document?');">
+                        <button class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</section>
+</body>
+</html>
