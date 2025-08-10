@@ -38,6 +38,12 @@ lkf:
   security:
     partnerStrict: ture
 
+<<<<<<< HEAD
 some:
   property: ture
 
+=======
+    partner:
+      access:
+        enabled=true:
+>>>>>>> 9169b06 (Update)

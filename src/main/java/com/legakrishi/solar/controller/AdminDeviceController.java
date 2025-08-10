@@ -129,8 +129,7 @@ public class AdminDeviceController {
     private String generateToken() {
         return UUID.randomUUID().toString().replace("-", "");
     }
-
-    @Data
+    @lombok.Data
     public static class DeviceForm {
         private Long id;
         private Long siteId;
