@@ -1,143 +1,148 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      lang="en"
       layout:decorate="~{fragments/layout}">
 <head>
     <title>Admin Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
 
-    <style>
-        .dashboard-header {
-          background: linear-gradient(90deg, #e7f7fa 70%, #f8fafc 100%);
-          border-radius: 1.2rem;
-          box-shadow: 0 3px 24px 0 rgba(55,125,255,0.08);
-          padding-top: 1.1rem;
-          padding-bottom: 1.1rem;
-          margin-bottom: 1.5rem;
-          min-height: 72px;
-        }
-        @media (max-width: 767px) {
-          .dashboard-header {
-            border-radius: .9rem;
-            padding: .7rem .6rem .7rem .6rem;
-            flex-direction: column;
-            align-items: flex-start !important;
-            gap: 0.8rem !important;
-            min-height: unset;
-          }
-          .dashboard-header h2 { font-size: 1.25rem !important; }
-          .dashboard-header .badge { font-size: 1rem !important; padding: .3rem .8rem !important; }
-        }
-        .quick-access-row { margin: 0 -0.5rem; }
-        .quick-card {
-          display: flex; flex-direction: column; justify-content: center; align-items: center;
-          border-radius: 1.25rem; padding: 2rem 1rem 1.2rem 1rem;
-          background: linear-gradient(135deg, #f8fafc 80%, #e6f7fa 100%);
-          box-shadow: 0 4px 18px 0 rgba(55,125,255,0.09);
-          min-height: 120px; min-width: 120px; text-align: center;
-          transition: box-shadow 0.15s, transform 0.12s; border: none; position: relative; margin-bottom: 0.5rem;
-        }
-        .quick-card:hover, .quick-card:focus {
-          background: linear-gradient(135deg, #e1f6fb 80%, #d9e7fa 100%);
-          box-shadow: 0 6px 24px 0 rgba(55,125,255,0.18);
-          transform: translateY(-2px) scale(1.03);
-          text-decoration: none;
-        }
-        .quick-icon { font-size: 2.1rem; margin-bottom: .5rem; color: #28a745; }
-        .quick-title { font-size: 1.09rem; font-weight: 600; color: #333; letter-spacing: 0.01em; }
-        @media (max-width: 767px) {
-          .quick-access-row { margin: 0; }
-          .quick-card { min-height: 90px; padding: 1.1rem 0.3rem 0.9rem 0.3rem; }
-          .quick-title { font-size: 0.99rem; }
-          .quick-icon { font-size: 1.7rem; }
-        }
-
-        .chart-wrap { height: 300px; position: relative; }
-        .chart-empty {
-          position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-          color:#6c757d; font-size:.95rem; pointer-events:none;
-        }
-        @media (max-width: 991px) { .chart-wrap { height: 260px; } }
-    </style>
+    <!-- Icons for quick cards -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root{
+          --brand:#0ea5e9;          /* cyan-500 */
+          --brand-2:#22c55e;        /* green-500 */
+          --ink:#0f172a;            /* slate-900 */
+          --muted:#64748b;          /* slate-500 */
+          --panel:#ffffff;
+          --bg:linear-gradient(180deg,#f8fafc 0%,#eff6ff 100%);
+          --shadow:0 6px 24px rgba(2,6,23,.08);
+          --radius:1.2rem;
+        }
+
+        body{ background:var(--bg); }
+
+        .dashboard-header{
+          background: linear-gradient(90deg, #e7f7fa 65%, #f8fafc 100%);
+          border-radius: var(--radius);
+          box-shadow: var(--shadow);
+          padding: 1.1rem 1.2rem;
+          margin-bottom: 1.25rem;
+          min-height: 72px;
+        }
+        .dashboard-header h2{ color: var(--brand); letter-spacing:.3px; }
+        .badge{ border-radius: 999px; }
+
+        .kpi .card{
+          border: 0;
+          background: var(--panel);
+          border-radius: calc(var(--radius) - .3rem);
+          box-shadow: var(--shadow);
+        }
+        .kpi .metric{ font-weight: 800; letter-spacing:.2px; }
+
+        .quick-access-row{ margin: 0 -0.5rem; }
+        .quick-card{
+          display:flex; flex-direction:column; justify-content:center; align-items:center;
+          border:0; background:linear-gradient(135deg,#f8fafc 80%,#e6f7fa 100%);
+          border-radius: calc(var(--radius) - .2rem);
+          padding: 1.4rem 1rem 1.1rem;
+          box-shadow: var(--shadow);
+          min-height:120px; text-align:center; transition: .15s transform, .2s box-shadow;
+        }
+        .quick-card:hover{ transform: translateY(-2px) scale(1.02); box-shadow: 0 12px 36px rgba(14,165,233,.2); text-decoration:none; }
+        .quick-icon{ font-size:2rem; margin-bottom:.35rem; color:var(--brand-2); }
+        .quick-title{ font-weight:700; color:var(--ink); }
+
+        .chart-card{
+          border:0; background:var(--panel); border-radius: calc(var(--radius) - .3rem); box-shadow: var(--shadow);
+        }
+        .chart-wrap{ height:300px; position:relative; }
+        .chart-empty{
+          position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+          color:var(--muted); font-size:.95rem; pointer-events:none;
+        }
+        @media (max-width: 991px){ .chart-wrap{ height:260px; } }
+        @media (max-width: 767px){
+          .dashboard-header{ border-radius:.9rem; padding:.7rem .75rem; min-height:unset; }
+          .quick-card{ min-height:92px; }
+        }
+    </style>
 </head>
 <body>
-<section layout:fragment="content">
+<section layout:fragment="content" class="container-fluid px-2 px-md-3 pb-4">
+
     <!-- Header -->
-    <div class="dashboard-header d-flex align-items-center justify-content-between flex-wrap gap-3 px-2 px-md-0 mb-4">
-        <div class="d-flex align-items-center gap-3 flex-wrap">
+    <div class="dashboard-header d-flex align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
             <div>
-                <h2 class="fw-bold mb-0 text-primary" style="letter-spacing:.5px;">Dashboard</h2>
-                <div class="small text-muted" style="letter-spacing:.5px;">Legha Krishi Farm Admin Panel</div>
+                <h2 class="fw-bold mb-0">Dashboard</h2>
+                <div class="small text-muted">Legha Krishi Farm — Admin</div>
             </div>
         </div>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-primary fs-6 py-2 px-3 d-none d-md-block">👤 Admin</span>
-        </div>
+        <div><span class="badge bg-primary fs-6 py-2 px-3 d-none d-md-inline">👤 Admin</span></div>
     </div>
 
-    <!-- KPI cards -->
-    <div class="row dashboard-cards g-3 mb-4">
-        <div class="col-6 col-md-4">
-            <div class="card shadow-sm border-0 p-3 text-center">
-                <div class="card-title text-muted small mb-1">Total Partners</div>
-                <div class="fs-3 fw-bold text-success" th:text="${partnerCount}">0</div>
+    <!-- KPIs -->
+    <div class="row g-3 mb-3 kpi">
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">Total Partners</div>
+                <div class="metric fs-3 text-success" th:text="${partnerCount}">0</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card shadow-sm border-0 p-3 text-center">
-                <div class="card-title text-muted small mb-1">Total Income (Paid Bills)</div>
-                <div class="fs-4 fw-bold" th:text="${#numbers.formatDecimal(totalIncomeReceived, 1, 'COMMA', 2, 'POINT')}">0.00</div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">Income (Paid Bills)</div>
+                <div class="metric fs-4" th:text="${#numbers.formatDecimal(totalIncomeReceived,1,'COMMA',2,'POINT')}">0.00</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card shadow-sm border-0 p-3 text-center">
-                <div class="card-title text-muted small mb-1">Other Income</div>
-                <div class="fs-4 fw-bold" th:text="${#numbers.formatDecimal(otherIncome, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">Other Income</div>
+                <div class="metric fs-4" th:text="${#numbers.formatDecimal(otherIncome,1,'COMMA',2,'POINT')}">₹0.00</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card shadow-sm border-0 p-3 text-center">
-                <div class="card-title text-muted small mb-1">Total Govt Deductions</div>
-                <div class="fs-4 fw-bold" th:text="${#numbers.formatDecimal(totalGovernmentDeductions, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">Govt Deductions</div>
+                <div class="metric fs-4" th:text="${#numbers.formatDecimal(totalGovernmentDeductions,1,'COMMA',2,'POINT')}">₹0.00</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card shadow-sm border-0 p-3 text-center">
-                <div class="card-title text-muted small mb-1">Total Outgoing</div>
-                <div class="fs-4 fw-bold" th:text="${#numbers.formatDecimal(totalOutgoing, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">Total Outgoing</div>
+                <div class="metric fs-4" th:text="${#numbers.formatDecimal(totalOutgoing,1,'COMMA',2,'POINT')}">₹0.00</div>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card shadow-sm border-0 p-3 text-center">
-                <div class="card-title text-muted small mb-1">Balance Amount</div>
-                <div class="fs-4 fw-bold" th:text="${#numbers.formatDecimal(balanceAmount, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+        <div class="col-6 col-md-4 col-xl-2">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">Balance</div>
+                <div class="metric fs-4" th:text="${#numbers.formatDecimal(balanceAmount,1,'COMMA',2,'POINT')}">₹0.00</div>
             </div>
         </div>
     </div>
 
     <!-- Last Meter Reading -->
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-12">
-            <div class="card shadow-sm border-0 p-3">
-                <div class="card-title text-muted small mb-2">Last Meter Reading</div>
+            <div class="card chart-card p-3">
+                <div class="text-muted small mb-2">Last Meter Reading</div>
+
                 <div th:if="${lastReading != null}">
                     <div class="row">
-                        <div class="col-12 col-md-4 mb-2">
-                            <b>Plant:</b> <span th:text="${lastReading.plantName}"></span>
-                        </div>
-                        <div class="col-6 col-md-4 mb-2">
-                            <b>Date:</b> <span th:text="${#temporals.format(lastReading.readingDate, 'dd/MM/yyyy')}"></span>
-                        </div>
-                        <div class="col-6 col-md-4 mb-2">
-                            <b>Month/Year:</b> <span th:text="${lastReading.month + ' / ' + lastReading.year}"></span>
-                        </div>
+                        <div class="col-12 col-md-4 mb-2"><b>Plant:</b> <span th:text="${lastReading.plantName}"></span></div>
+                        <div class="col-6 col-md-4 mb-2"><b>Date:</b> <span th:text="${#temporals.format(lastReading.readingDate,'dd/MM/yyyy')}"></span></div>
+                        <div class="col-6 col-md-4 mb-2"><b>Month/Year:</b> <span th:text="${lastReading.month + ' / ' + lastReading.year}"></span></div>
                     </div>
                     <hr class="my-2">
                     <div class="row">
-                        <div class="col-6">
+                        <div class="col-12 col-lg-6">
                             <h6 class="mb-2">Main Meter</h6>
                             <ul class="list-unstyled mb-0 small">
                                 <li><b>Meter:</b> <span th:text="${mainMeter.meterName}"></span></li>
@@ -147,7 +152,7 @@
                                 <li><b>Export End:</b> <span th:text="${mainMeter.kwhExportEnd}"></span></li>
                             </ul>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-lg-6">
                             <h6 class="mb-2">Check Meter</h6>
                             <ul class="list-unstyled mb-0 small">
                                 <li><b>Meter:</b> <span th:text="${checkMeter.meterName}"></span></li>
@@ -159,9 +164,9 @@
                         </div>
                     </div>
                 </div>
-                <div th:if="${lastReading == null}" class="text-muted">
-                    No Last Meter Reading Available.
-                </div>
+
+                <div th:if="${lastReading == null}" class="text-muted">No Last Meter Reading Available.</div>
+
                 <div class="mt-2">
                     <a th:href="@{/admin/jmr_reports}" class="btn btn-sm btn-outline-primary">View All Readings</a>
                     <a th:href="@{/admin/jmr_reports/add}" class="btn btn-sm btn-success ms-2">Add JMR</a>
@@ -174,68 +179,57 @@
     <div class="row quick-access-row g-3 justify-content-center py-2">
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/partners}" class="quick-card shadow-sm">
-                <i class="bi bi-people quick-icon"></i>
-                <div class="quick-title">Partners</div>
+                <i class="bi bi-people quick-icon"></i><div class="quick-title">Partners</div>
             </a>
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/transactions}" class="quick-card shadow-sm">
-                <i class="bi bi-cash-coin quick-icon"></i>
-                <div class="quick-title">Transactions</div>
+                <i class="bi bi-cash-coin quick-icon"></i><div class="quick-title">Transactions</div>
             </a>
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/transactions/other-income/add}" class="quick-card shadow-sm">
-                <i class="bi bi-piggy-bank quick-icon"></i>
-                <div class="quick-title">Add Other Income</div>
+                <i class="bi bi-piggy-bank quick-icon"></i><div class="quick-title">Add Other Income</div>
             </a>
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/transactions/add/outgoing}" class="quick-card shadow-sm">
-                <i class="bi bi-plus-circle quick-icon"></i>
-                <div class="quick-title">Add Outgoing</div>
+                <i class="bi bi-plus-circle quick-icon"></i><div class="quick-title">Add Outgoing</div>
             </a>
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/jmr_reports}" class="quick-card shadow-sm">
-                <i class="bi bi-clipboard-data quick-icon"></i>
-                <div class="quick-title">JMR Reports</div>
+                <i class="bi bi-clipboard-data quick-icon"></i><div class="quick-title">JMR Reports</div>
             </a>
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/jmr_reports/add}" class="quick-card shadow-sm">
-                <i class="bi bi-plus-circle-dotted quick-icon"></i>
-                <div class="quick-title">Add JMR</div>
+                <i class="bi bi-plus-circle-dotted quick-icon"></i><div class="quick-title">Add JMR</div>
             </a>
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/bills}" class="quick-card shadow-sm">
-                <i class="bi bi-list-check quick-icon"></i>
-                <div class="quick-title">Manage Bills</div>
+                <i class="bi bi-list-check quick-icon"></i><div class="quick-title">Manage Bills</div>
             </a>
         </div>
         <div class="col-6 col-md-3 col-lg-2">
             <a th:href="@{/admin/bills/generate}" class="quick-card shadow-sm">
-                <i class="bi bi-receipt quick-icon"></i>
-                <div class="quick-title">Generate Bill</div>
+                <i class="bi bi-receipt quick-icon"></i><div class="quick-title">Generate Bill</div>
             </a>
         </div>
     </div>
 
-    <!-- Charts (Meter-wise daily) -->
-    <section class="container my-4" id="energy-charts" th:with="siteId=${defaultSiteId}">
+    <!-- Meter-wise Daily Charts -->
+    <section class="container-fluid my-4 px-0" id="energy-charts" th:with="siteId=${defaultSiteId}">
         <div class="d-flex align-items-center justify-content-between mb-3">
             <h5 class="mb-0">Energy &amp; Power — Meter-wise</h5>
-            <div class="d-flex gap-2">
-                <select id="siteSelect" class="form-select form-select-sm" style="min-width:220px"
-                        th:disabled="${#lists.isEmpty(sites)}">
-                    <option th:each="s : ${sites}"
-                            th:value="${s.id}"
+            <div class="d-flex gap-2 align-items-center">
+                <select id="siteSelect" class="form-select form-select-sm" style="min-width:220px" th:disabled="${#lists.isEmpty(sites)}">
+                    <option th:each="s : ${sites}" th:value="${s.id}"
                             th:text="${s.name} + ' (ID: ' + ${s.id} + ')'"
-                            th:selected="${s.id == defaultSiteId}">
-                    </option>
+                            th:selected="${s.id == defaultSiteId}"></option>
                 </select>
-                <select id="daysSelect" class="form-select form-select-sm" style="width:110px">
+                <select id="daysSelect" class="form-select form-select-sm" style="width:120px">
                     <option value="7">Last 7 days</option>
                     <option value="14">Last 14 days</option>
                     <option value="30" selected>Last 30 days</option>
@@ -246,7 +240,7 @@
 
         <div class="row g-3">
             <div class="col-12 col-lg-6">
-                <div class="card shadow-sm">
+                <div class="card chart-card">
                     <div class="card-body chart-wrap">
                         <h6 class="card-title mb-2">Daily AC Active Energy (kWh)</h6>
                         <canvas id="chAcDaily"></canvas>
@@ -256,7 +250,7 @@
             </div>
 
             <div class="col-12 col-lg-6">
-                <div class="card shadow-sm">
+                <div class="card chart-card">
                     <div class="card-body chart-wrap">
                         <h6 class="card-title mb-2">Daily AC Export Energy (kWh)</h6>
                         <canvas id="chAcExportDaily"></canvas>
@@ -266,7 +260,7 @@
             </div>
 
             <div class="col-12 col-lg-6">
-                <div class="card shadow-sm">
+                <div class="card chart-card">
                     <div class="card-body chart-wrap">
                         <h6 class="card-title mb-2">Daily AC Import Energy (kWh)</h6>
                         <canvas id="chAcImportDaily"></canvas>
@@ -276,7 +270,7 @@
             </div>
 
             <div class="col-12 col-lg-6">
-                <div class="card shadow-sm">
+                <div class="card chart-card">
                     <div class="card-body chart-wrap">
                         <h6 class="card-title mb-2">Daily DC Energy (kWh)</h6>
                         <canvas id="chDcDaily"></canvas>
@@ -286,7 +280,7 @@
             </div>
 
             <div class="col-12">
-                <div class="card shadow-sm">
+                <div class="card chart-card">
                     <div class="card-body chart-wrap">
                         <h6 class="card-title mb-2">Max AC Power (kW)</h6>
                         <canvas id="chMaxPower"></canvas>
@@ -297,13 +291,13 @@
         </div>
     </section>
 
-    <!-- TIME VIEW (Intraday) -->
-    <div class="card shadow-sm mb-3">
+    <!-- Intraday (Time View) -->
+    <div class="card chart-card mb-3">
         <div class="card-body">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <h5 class="card-title mb-0">Units — Time View</h5>
                 <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <select id="tvMetric" class="form-select form-select-sm" style="min-width:210px">
+                    <select id="tvMetric" class="form-select form-select-sm" style="min-width:220px">
                         <option value="TOTAL_AC_POWER">Total AC Active Power (kW)</option>
                         <option value="TOTAL_AC_ENERGY">Total AC Active Energy (kWh)</option>
                         <option value="DAILY_AC_ENERGY" selected>Daily AC Active Energy (kWh)</option>
@@ -314,9 +308,8 @@
                         <option value="DAILY_DC_ENERGY">Daily DC Energy (kWh)</option>
                         <option value="TOTAL_DC_ENERGY">Total DC Energy (kWh)</option>
                     </select>
-                    <input id="tvDate" type="date" class="form-control form-control-sm" />
-                    <select id="tvSite" class="form-select form-select-sm" style="min-width:180px"
-                            th:disabled="${#lists.isEmpty(sites)}">
+                    <input id="tvDate" type="date" class="form-control form-control-sm"/>
+                    <select id="tvSite" class="form-select form-select-sm" style="min-width:180px" th:disabled="${#lists.isEmpty(sites)}">
                         <option th:each="s : ${sites}" th:value="${s.id}"
                                 th:text="${s.name} + ' (ID: ' + ${s.id} + ')'"
                                 th:selected="${s.id == defaultSiteId}"></option>
@@ -351,7 +344,7 @@
       const emptyEl = document.getElementById('tvEmpty');
       const ctx = canvas ? canvas.getContext('2d') : null;
 
-      // Default metric + date
+      // Defaults
       if ($metric && !$metric.value) $metric.value = 'TOTAL_AC_POWER';
       if ($date && !$date.value) {
         const today = new Date();
@@ -364,6 +357,7 @@
       const dataset = (label, data, color) => ({
         label, data: data||[], borderColor: color, backgroundColor: color, tension:0.25, pointRadius:0, borderWidth:2
       });
+      const maxOf = arr => (arr||[]).reduce((m,v)=> Math.max(m, Number(v||0)), 0);
 
       function buildChips(totals){
         if (!$chips) return;
@@ -385,8 +379,6 @@
           $chips.appendChild(btn);
         });
       }
-
-      const maxOf = arr => (arr||[]).reduce((m,v)=> Math.max(m, Number(v||0)), 0);
 
       async function load(){
         if (!ctx) return;
@@ -411,11 +403,15 @@
           if (s.CHECK)   ds.push(dataset('CHECK — '+metric,   s.CHECK,   colors.CHECK));
 
           const hasAnyPoints = labels.length > 0 && ds.some(d => (d.data||[]).length > 0);
-          const maxVal = Math.max(maxOf(s.MAIN), maxOf(s.STANDBY), maxOf(s.CHECK));
+          const maxVal = Math.max(
+            (s.MAIN? Math.max(...s.MAIN.map(v=>+v||0)) : 0),
+            (s.STANDBY? Math.max(...s.STANDBY.map(v=>+v||0)) : 0),
+            (s.CHECK? Math.max(...s.CHECK.map(v=>+v||0)) : 0)
+          );
           const allZero = hasAnyPoints && maxVal === 0;
 
-          // If all zeros, lift the line slightly so it’s visible (purely visual)
-          const EPS = 0.05; // 0.05 kW baseline
+          // Make all-zero curves visible (purely visual baseline)
+          const EPS = 0.05; // 0.05 kW
           if (allZero) {
             ds.forEach(d => d.data = (d.data||[]).map(v => v == null ? null : (Number(v) === 0 ? EPS : Number(v))));
           }
@@ -491,94 +487,90 @@
         chMaxPower: null
       };
 
-      const meterOrder = ['MAIN', 'STANDBY', 'CHECK'];
+      const meterOrder = ['MAIN','STANDBY','CHECK'];
       const meterColors = {
-        MAIN:    'rgba(54, 162, 235, 0.9)',
-        STANDBY: 'rgba(255, 159, 64, 0.9)',
-        CHECK:   'rgba(75, 192, 192, 0.9)'
+        MAIN:'rgba(54,162,235,0.9)',
+        STANDBY:'rgba(255,159,64,0.9)',
+        CHECK:'rgba(75,192,192,0.9)'
       };
 
-      let meterLabels = { MAIN: 'MAIN', STANDBY: 'STANDBY', CHECK: 'CHECK' };
+      let meterLabels = { MAIN:'MAIN', STANDBY:'STANDBY', CHECK:'CHECK' };
 
-      async function loadLabels(siteId) {
-        try {
-          const res = await fetch(endpoints.labels(siteId), { cache: 'no-store' });
+      async function loadLabels(siteId){
+        try{
+          const res = await fetch(endpoints.labels(siteId), { cache:'no-store' });
           if (res.ok) meterLabels = await res.json();
-        } catch (e) {
-          console.warn('meter-labels fetch failed:', e);
-        }
+        }catch(e){ console.warn('meter-labels fetch failed:', e); }
       }
 
-      function toDatasets(metric, series) {
+      function toDatasets(metric, series){
         const src = series?.[metric] || {};
         return meterOrder.map(m => ({
           label: meterLabels[m] || m,
           data: src[m] || [],
           borderColor: meterColors[m],
           backgroundColor: meterColors[m],
-          tension: 0.25,
+          tension: .25,
           pointRadius: 0,
           borderWidth: 2
         }));
       }
 
-      function makeConfig(labels, datasets, yTitle) {
+      function makeConfig(labels, datasets, yTitle){
         return {
-          type: 'line',
-          data: { labels, datasets },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-              legend: { position: 'bottom' },
-              tooltip: { mode: 'index', intersect: false }
-            },
-            scales: {
-              x: { ticks: { autoSkip: true, maxTicksLimit: 12 } },
-              y: { beginAtZero: true, title: { display: true, text: yTitle } }
+          type:'line',
+          data:{ labels, datasets },
+          options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            interaction:{ mode:'index', intersect:false },
+            plugins:{ legend:{ position:'bottom' } },
+            scales:{
+              x:{ ticks:{ autoSkip:true, maxTicksLimit:12 } },
+              y:{ beginAtZero:true, title:{ display:true, text:yTitle } }
             }
           }
         };
       }
 
-      function upsertChart(instance, canvasId, config) {
+      function upsertChart(instance, canvasId, config){
         const canvas = document.getElementById(canvasId);
         if (!canvas) return instance;
         const ctx = canvas.getContext('2d');
-        if (instance) { instance.destroy(); }
+        if (instance) instance.destroy();
         return new Chart(ctx, config);
       }
 
-      function renderAll(labels, series) {
-        const hasLabels = (labels && labels.length > 0);
-        document.getElementById('empty-acdaily')?.style && (document.getElementById('empty-acdaily').style.display = hasLabels ? 'none' : 'flex');
-        document.getElementById('empty-acexport')?.style && (document.getElementById('empty-acexport').style.display = hasLabels ? 'none' : 'flex');
-        document.getElementById('empty-acimport')?.style && (document.getElementById('empty-acimport').style.display = hasLabels ? 'none' : 'flex');
-        document.getElementById('empty-dcdaily')?.style && (document.getElementById('empty-dcdaily').style.display = hasLabels ? 'none' : 'flex');
-        document.getElementById('empty-maxp')?.style && (document.getElementById('empty-maxp').style.display = hasLabels ? 'none' : 'flex');
+      function setEmpty(id, on){ const el = document.getElementById(id); if (el) el.style.display = on ? 'flex' : 'none'; }
 
-        charts.chAcDaily       = upsertChart(charts.chAcDaily,       'chAcDaily',       makeConfig(labels, toDatasets('acActiveEnergyKwh', series), 'kWh'));
-        charts.chAcExportDaily = upsertChart(charts.chAcExportDaily, 'chAcExportDaily', makeConfig(labels, toDatasets('acExportEnergyKwh', series), 'kWh'));
-        charts.chAcImportDaily = upsertChart(charts.chAcImportDaily, 'chAcImportDaily', makeConfig(labels, toDatasets('acImportEnergyKwh', series), 'kWh'));
-        charts.chDcDaily       = upsertChart(charts.chDcDaily,       'chDcDaily',       makeConfig(labels, toDatasets('dcEnergyKwh',       series), 'kWh'));
-        charts.chMaxPower      = upsertChart(charts.chMaxPower,      'chMaxPower',      makeConfig(labels, toDatasets('maxAcPowerKw',      series), 'kW'));
+      function renderAll(labels, series){
+        const hasLabels = Array.isArray(labels) && labels.length > 0;
+        setEmpty('empty-acdaily',  !hasLabels);
+        setEmpty('empty-acexport', !hasLabels);
+        setEmpty('empty-acimport', !hasLabels);
+        setEmpty('empty-dcdaily',  !hasLabels);
+        setEmpty('empty-maxp',     !hasLabels);
+
+        charts.chAcDaily       = upsertChart(charts.chAcDaily,      'chAcDaily',      makeConfig(labels, toDatasets('acActiveEnergyKwh', series), 'kWh'));
+        charts.chAcExportDaily = upsertChart(charts.chAcExportDaily,'chAcExportDaily',makeConfig(labels, toDatasets('acExportEnergyKwh', series), 'kWh'));
+        charts.chAcImportDaily = upsertChart(charts.chAcImportDaily,'chAcImportDaily',makeConfig(labels, toDatasets('acImportEnergyKwh', series), 'kWh'));
+        charts.chDcDaily       = upsertChart(charts.chDcDaily,      'chDcDaily',      makeConfig(labels, toDatasets('dcEnergyKwh',       series), 'kWh'));
+        charts.chMaxPower      = upsertChart(charts.chMaxPower,     'chMaxPower',     makeConfig(labels, toDatasets('maxAcPowerKw',      series), 'kW'));
       }
 
-      async function loadAndRender() {
+      async function loadAndRender(){
         const siteId = $site?.value ?? '';
         const days   = $days?.value ?? '30';
         if (!siteId) return;
-
-        try {
+        try{
           await loadLabels(siteId);
-          const res = await fetch(endpoints.adminSeries(siteId, days), { cache: 'no-store' });
+          const res = await fetch(endpoints.adminSeries(siteId, days), { cache:'no-store' });
           if (!res.ok) throw new Error(res.statusText);
           const data = await res.json();
           renderAll(data.labels || [], data.series || {});
-        } catch (e) {
+        }catch(e){
           console.error('day-meter-series load error:', e);
-          renderAll([], {}); // show "No data"
+          renderAll([], {});
         }
       }
 
@@ -586,8 +578,7 @@
       $site?.addEventListener('change', loadAndRender);
       $days?.addEventListener('change', loadAndRender);
 
-      // Run immediately
-      loadAndRender();
+      loadAndRender(); // initial
     })();
 </script>
 </body>
