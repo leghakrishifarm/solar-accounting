@@ -350,17 +350,23 @@
       const canvas = document.getElementById('tvChart');
       const emptyEl = document.getElementById('tvEmpty');
       const ctx = canvas ? canvas.getContext('2d') : null;
-
+    
+      // Make default metric match your manual test
+      if ($metric && !$metric.value) $metric.value = 'TOTAL_AC_POWER';
+    
+      // Default date = today (local)
       if ($date && !$date.value) {
         const today = new Date();
         today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
         $date.value = today.toISOString().slice(0,10);
       }
-
+    
       let chart;
       const colors = { MAIN:'rgba(255,99,132,0.9)', STANDBY:'rgba(75,192,192,0.9)', CHECK:'rgba(153,102,255,0.9)' };
-      const dataset = (label, data, color) => ({ label, data: data||[], borderColor: color, backgroundColor: color, tension:0.25, pointRadius:0, borderWidth:2 });
-
+      const dataset = (label, data, color) => ({
+        label, data: data||[], borderColor: color, backgroundColor: color, tension:0.25, pointRadius:0, borderWidth:2
+      });
+    
       function buildChips(totals){
         if (!$chips) return;
         $chips.innerHTML = '';
@@ -381,39 +387,43 @@
           $chips.appendChild(btn);
         });
       }
-
-      function maxOf(arr){ return (arr||[]).reduce((m,v)=> Math.max(m, Number(v||0)), 0); }
-
+    
+      const maxOf = arr => (arr||[]).reduce((m,v)=> Math.max(m, Number(v||0)), 0);
+    
       async function load(){
         if (!ctx) return;
         const siteId = $site?.value;
         const day = $date?.value;
-        const metric = $metric?.value;
+        const metric = $metric?.value || 'TOTAL_AC_POWER';
         if (!siteId || !day) return;
-
+    
         try {
-          const url = `/admin/charts/intraday?siteId=${siteId}&day=${day}&metric=${metric}&stepMin=10`;
+          // Align with your working URL: use stepMin=1
+          const url = `/admin/charts/intraday?siteId=${encodeURIComponent(siteId)}&day=${encodeURIComponent(day)}&metric=${encodeURIComponent(metric)}&stepMin=1`;
           const res = await fetch(url, { cache:'no-store' });
           if (!res.ok) throw new Error(res.statusText);
+    
+          // If server ever returns HTML (e.g., login redirect), this will throw
           const data = await res.json();
-
+    
           const labels = data.labels || [];
           const unit = data.unit || '';
           const s = data.series || {};
-
+    
           const ds = [];
           if (s.MAIN)    ds.push(dataset('MAIN — '+metric,    s.MAIN,    colors.MAIN));
           if (s.STANDBY) ds.push(dataset('STANDBY — '+metric, s.STANDBY, colors.STANDBY));
           if (s.CHECK)   ds.push(dataset('CHECK — '+metric,   s.CHECK,   colors.CHECK));
-
-          // Detect has data and all-zero case
+    
           const hasAnyPoints = labels.length > 0 && ds.some(d => (d.data||[]).length > 0);
           const maxVal = Math.max(maxOf(s.MAIN), maxOf(s.STANDBY), maxOf(s.CHECK));
           const allZero = hasAnyPoints && maxVal === 0;
-
-          if (emptyEl) emptyEl.textContent = allZero ? 'All values are 0' : 'No data';
-          if (emptyEl) emptyEl.style.display = hasAnyPoints ? (allZero ? 'flex' : 'none') : 'flex';
-
+    
+          if (emptyEl) {
+            emptyEl.textContent = allZero ? 'All values are 0' : 'No data';
+            emptyEl.style.display = hasAnyPoints ? (allZero ? 'flex' : 'none') : 'flex';
+          }
+    
           if (chart) chart.destroy();
           chart = new Chart(ctx, {
             type:'line',
@@ -426,15 +436,16 @@
               scales:{
                 y:{
                   beginAtZero:true,
-                  // If everything is 0, lift the axis so the zero line is visible
-                  suggestedMax: allZero ? 1 : undefined,
+                  // Make a zero-only line visible by dipping slightly below 0
+                  suggestedMin: allZero ? -0.1 : undefined,
+                  suggestedMax: allZero ?  0.9 : undefined,
                   title:{ display:true, text:unit }
                 },
                 x:{ ticks:{ maxTicksLimit: 12 } }
               }
             }
           });
-
+    
           const totals = { unit };
           ['MAIN','STANDBY','CHECK'].forEach(m => {
             const arr = s[m] || [];
@@ -443,20 +454,20 @@
             totals[m] = Math.round((last + Number.EPSILON) * 10)/10;
           });
           buildChips(totals);
-
+    
           if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Date: ${day} • Unit: ${unit}`;
         } catch (e) {
           console.error('Intraday load error:', e);
           if (emptyEl) { emptyEl.textContent = 'Failed to load'; emptyEl.style.display = 'flex'; }
         }
       }
-
+    
       $btn?.addEventListener('click', load);
       $site?.addEventListener('change', load);
       $date?.addEventListener('change', load);
       $metric?.addEventListener('change', load);
-
-      // Run immediately
+    
+      // Initial load
       load();
     })();
 </script>
