@@ -54,6 +54,17 @@
                 <div class="form-text">Share this token with your gateway/logger to call the /api/iot/ingest endpoint.</div>
             </div>
 
+            <div class="col-md-6">
+                <label class="form-label">Default Meter Label (for charts)</label>
+                <select class="form-select" name="defaultMeterKind">
+                    <option th:selected="${form.defaultMeterKind == null or form.defaultMeterKind == ''}" value="">— none —</option>
+                    <option value="MAIN"    th:selected="${form.defaultMeterKind == 'MAIN'}">MAIN</option>
+                    <option value="STANDBY" th:selected="${form.defaultMeterKind == 'STANDBY'}">STANDBY</option>
+                    <option value="CHECK"   th:selected="${form.defaultMeterKind == 'CHECK'}">CHECK</option>
+                </select>
+                <div class="form-text">Choose which meter label this device represents for site-wide charts.</div>
+            </div>
+
             <div class="col-md-6 d-flex align-items-end">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="active" th:checked="${form.active}">
