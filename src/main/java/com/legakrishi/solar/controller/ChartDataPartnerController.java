@@ -1,63 +1,40 @@
 package com.legakrishi.solar.controller;
 
-import com.legakrishi.solar.model.MeterKind;
-import com.legakrishi.solar.repository.DeviceRepository;
 import com.legakrishi.solar.service.ChartSeriesService;
-import com.legakrishi.solar.service.PartnerAccessService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
-@PreAuthorize("hasRole('PARTNER')")
 @RequestMapping("/partners/charts")
+@PreAuthorize("hasRole('PARTNER')")
 public class ChartDataPartnerController {
 
     private final ChartSeriesService charts;
-    private final DeviceRepository deviceRepo;
-    private final PartnerAccessService access;
 
-    public ChartDataPartnerController(ChartSeriesService charts,
-                                      DeviceRepository deviceRepo,
-                                      PartnerAccessService access) {
+    public ChartDataPartnerController(ChartSeriesService charts) {
         this.charts = charts;
-        this.deviceRepo = deviceRepo;
-        this.access = access;
     }
 
-    @GetMapping("/day-meter-series")
-    public Map<String, Object> dayMeterSeries(@RequestParam Long siteId,
-                                              @RequestParam(defaultValue = "30") int days) {
-        access.assertHasSite(siteId);
-        return charts.buildDayMeterSeries(siteId, days);
+    // e.g. GET /partners/charts/daily?siteId=1&days=7
+    @GetMapping("/daily")
+    public Map<String, Object> daily(@RequestParam Long siteId,
+                                     @RequestParam(defaultValue = "7") int days) {
+        // FIX: call the correct service method name
+        return charts.buildDailyMeterSeries(siteId, days);
     }
 
-    @GetMapping("/meter-labels")
-    public Map<String, String> meterLabels(@RequestParam Long siteId) {
-        access.assertHasSite(siteId);
-        Map<String, String> out = new LinkedHashMap<>();
-        for (var mk : MeterKind.values()) {
-            String base = switch (mk) { case MAIN -> "MAIN"; case STANDBY -> "STANDBY"; case CHECK -> "CHECK"; };
-            String label = base;
-            deviceRepo.findFirstBySiteIdAndDefaultMeterKind(siteId, mk).ifPresent(d -> {
-                String suffix = (d.getType()!=null? d.getType() : "Device") + " #" + d.getId();
-                out.put(mk.name(), base + " — " + suffix);
-            });
-            out.putIfAbsent(mk.name(), label);
-        }
-        return out;
-    }
-
+    // e.g. GET /partners/charts/intraday?siteId=1&date=2025-08-15&metric=TOTAL_AC_POWER&stepMin=15
     @GetMapping("/intraday")
-    public Map<String,Object> intraday(@RequestParam Long siteId,
-                                       @RequestParam(required = false) String day,
-                                       @RequestParam(defaultValue = "DAILY_AC_IMPORT") String metric,
-                                       @RequestParam(defaultValue = "10") Integer stepMin) {
-        access.assertHasSite(siteId);
-        LocalDate d = (day != null && !day.isBlank()) ? LocalDate.parse(day) : null;
-        return charts.buildIntradayMeterSeries(siteId, d, metric, stepMin);
+    public Map<String, Object> intraday(@RequestParam Long siteId,
+                                        @RequestParam(required = false)
+                                        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+                                        LocalDate date,
+                                        @RequestParam(defaultValue = "TOTAL_AC_POWER") String metric,
+                                        @RequestParam(defaultValue = "15") Integer stepMin) {
+        return charts.buildIntradayMeterSeries(siteId, date, metric, stepMin);
     }
 }

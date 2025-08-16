@@ -44,23 +44,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // Use your DAO provider
                 .authenticationProvider(authenticationProvider())
 
-                // ✅ allow device/simulator POSTs without CSRF token
-                .csrf(csrf -> csrf.ignoringRequestMatchers(new AntPathRequestMatcher("/api/iot/**")))
+                // CSRF: allow device/simulator POSTs without token
+                .csrf(csrf -> csrf.ignoringRequestMatchers(
+                        new AntPathRequestMatcher("/api/iot/**"),
+                        new AntPathRequestMatcher("/ws/**") // handshake & SockJS info probe are GETs, but safe to ignore
+                ))
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/login",
-                                "/register",
-                                "/css/**",
-                                "/js/**",
-                                "/api/jmr/pdf",
-                                // ✅ allow ingest API without login
-                                "/api/iot/**"
-                        ).permitAll()
+                        // public pages & static
+                        .requestMatchers("/login", "/register").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**", "/favicon.ico").permitAll()
+
+                        // WebSocket handshake / SockJS endpoints must be reachable pre-auth
+                        .requestMatchers("/ws/**").permitAll()
+
+                        // public API (ingest) – no auth
+                        .requestMatchers("/api/iot/**").permitAll()
+
+                        // everything else requires login
                         .anyRequest().authenticated()
                 )
+
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/dashboard", true)

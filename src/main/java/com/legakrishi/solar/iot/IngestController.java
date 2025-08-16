@@ -4,8 +4,10 @@ import com.legakrishi.solar.iot.dto.IngestPayload;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController
-@RequestMapping("/api/iot")
+import org.springframework.web.bind.annotation.*;
+
+@RestController("iotIngestController") // <-- unique bean name
+@RequestMapping("/iot/ingest")          // <-- keep endpoints distinct
 public class IngestController {
 
     private final IngestService service;

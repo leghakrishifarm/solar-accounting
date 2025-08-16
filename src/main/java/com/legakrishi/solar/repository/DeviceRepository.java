@@ -16,6 +16,7 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     Optional<Device> findFirstBySiteIdAndDefaultMeterKind(Long siteId, MeterKind defaultMeterKind);
     List<Device> findAllBySiteId(Long siteId);
 
+
     @Modifying
     @Query("update Device d set d.lastSeen = CURRENT_TIMESTAMP where d.id = :id")
     int touchLastSeen(@Param("id") Long id);

@@ -284,200 +284,329 @@
         </div>
     </section>
 
-    <!-- Intraday (Time View) -->
-    <div class="card chart-card mb-3">
-        <div class="card-body">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <h5 class="card-title mb-0">Units — Time View</h5>
-                <div class="d-flex gap-2 align-items-center flex-wrap">
-                    <select id="tvMetric" class="form-select form-select-sm" style="min-width:220px">
-                        <option value="TOTAL_AC_POWER">Total AC Active Power (kW)</option>
-                        <option value="TOTAL_AC_ENERGY">Total AC Active Energy (kWh)</option>
-                        <option value="DAILY_AC_ENERGY" selected>Daily AC Active Energy (kWh)</option>
-                        <option value="DAILY_AC_EXPORT">Daily AC Active Export Energy (kWh)</option>
-                        <option value="TOTAL_AC_EXPORT">Total AC Active Export Energy (kWh)</option>
-                        <option value="DAILY_AC_IMPORT">Daily AC Active Import Energy (kWh)</option>
-                        <option value="TOTAL_AC_IMPORT">Total AC Active Import Energy (kWh)</option>
-                        <option value="DAILY_DC_ENERGY">Daily DC Energy (kWh)</option>
-                        <option value="TOTAL_DC_ENERGY">Total DC Energy (kWh)</option>
-                    </select>
-                    <input id="tvDate" type="date" class="form-control form-control-sm"/>
-                    <select id="tvSite" class="form-select form-select-sm" style="min-width:180px" th:disabled="${#lists.isEmpty(sites)}">
-                        <option th:each="s : ${sites}" th:value="${s.id}"
-                                th:text="${s.name} + ' (ID: ' + ${s.id} + ')'"
-                                th:selected="${s.id == defaultSiteId}"></option>
-                    </select>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="tvDemo">
-                        <label class="form-check-label small" for="tvDemo">Demo data</label>
+    <!-- RMS Summary & Health -->
+    <div class="row g-3 mb-3" id="rmsRow">
+        <!-- Performance KPIs -->
+        <div class="col-12 col-xl-8">
+            <div class="card p-3 chart-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Plant Performance</h6>
+                    <div class="small text-muted" id="rmsLastUpdated">—</div>
+                </div>
+                <div class="row g-3 text-center">
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="border rounded-3 p-2">
+                            <div class="small text-muted">PR</div>
+                            <div class="fs-4 fw-bold" id="kpiPR">—</div>
+                        </div>
                     </div>
-                    <button id="tvReload" class="btn btn-sm btn-primary">Show</button>
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="border rounded-3 p-2">
+                            <div class="small text-muted">CUF</div>
+                            <div class="fs-4 fw-bold" id="kpiCUF">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="border rounded-3 p-2">
+                            <div class="small text-muted">Energy Today</div>
+                            <div class="fs-5 fw-bold" id="kpiEToday">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="border rounded-3 p-2">
+                            <div class="small text-muted">Energy MTD</div>
+                            <div class="fs-5 fw-bold" id="kpiEMtd">—</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-xl-2">
+                        <div class="border rounded-3 p-2">
+                            <div class="small text-muted">Availability</div>
+                            <div class="fs-5 fw-bold" id="kpiAvail">—</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Latency banner -->
+                <div id="telemetryBanner" class="alert alert-warning py-2 px-3 mt-3 d-none">
+                    <span class="me-2">⚠️</span> Telemetry stale: last packet <span id="lastPacketAge">—</span> ago
+                </div>
+            </div>
+        </div>
+
+        <!-- Fleet health & alarms -->
+        <div class="col-12 col-xl-4">
+            <div class="card p-3 chart-card mb-3">
+                <h6 class="mb-2">Fleet Health</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge bg-success px-3 py-2 rounded-pill">Online: <span id="devOn">—</span></span>
+                    <span class="badge bg-secondary px-3 py-2 rounded-pill">Offline: <span id="devOff">—</span></span>
+                    <span class="badge bg-danger px-3 py-2 rounded-pill">Open Alerts: <span id="alertsOpen">—</span></span>
+                    <span class="badge bg-info text-dark px-3 py-2 rounded-pill">Last Data: <span id="lastPkt">—</span></span>
                 </div>
             </div>
 
-            <div id="tvStatus" class="d-flex gap-2 flex-wrap my-2"></div>
-
-            <div class="chart-wrap">
-                <canvas id="tvChart"></canvas>
-                <div id="tvEmpty" class="chart-empty" style="display:none;">No data</div>
+            <div class="card p-0 chart-card">
+                <div class="p-3 pb-0 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Active Alarms</h6>
+                    <a th:href="@{/admin/alarms}" class="small">View all</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                        <tr>
+                            <th style="width:34%">Time</th>
+                            <th style="width:26%">Device</th>
+                            <th style="width:14%">Level</th>
+                            <th>Title</th>
+                        </tr>
+                        </thead>
+                        <tbody id="alarmsBody">
+                        <tr><td colspan="4" class="text-muted small text-center py-3">No alarms</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div class="text-muted small mt-2" id="tvLegend"></div>
         </div>
     </div>
 
-    <!-- Daily charts demo switch (small row above the charts block) -->
-    <div class="d-flex align-items-center justify-content-end mb-2">
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="dayDemo">
-            <label class="form-check-label small" for="dayDemo">Demo data</label>
-        </div>
-    </div>
-<!-- Intraday (Time View) with SSE + fallback -->
-<script>
-    (() => {
-  const $site   = document.getElementById('tvSite');
-  const $date   = document.getElementById('tvDate');
-  const $metric = document.getElementById('tvMetric');
-  const $btn    = document.getElementById('tvReload');
-  const $legend = document.getElementById('tvLegend');
-  const $status = document.getElementById('tvStatus');
-  const $demo   = document.getElementById('tvDemo');
-  const canvas  = document.getElementById('tvChart');
-  const emptyEl = document.getElementById('tvEmpty');
-  const ctx     = canvas ? canvas.getContext('2d') : null;
+    <!-- Intraday (Time View) -->
+    <script>
+        (() => {
+          const $site   = document.getElementById('tvSite');
+          const $date   = document.getElementById('tvDate');
+          const $metric = document.getElementById('tvMetric');
+          const $btn    = document.getElementById('tvReload');
+          const $chips  = document.getElementById('tvChips');   // optional; safe if missing
+          const $legend = document.getElementById('tvLegend');
+          const $status = document.getElementById('tvStatus');  // pills container
+          const canvas  = document.getElementById('tvChart');
+          const emptyEl = document.getElementById('tvEmpty');
+          const ctx     = canvas ? canvas.getContext('2d') : null;
 
-      // --- small red/green "live" dot near the title (uses the red dot you already have)
-      const liveDot = document.querySelector('.card-title ~ .text-danger, .card-title ~ .text-success') // just in case
-      // Defaults
-      if ($metric && !$metric.value) $metric.value = 'TOTAL_AC_POWER';
-      if ($date && !$date.value) {
-        const today = new Date();
-        today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-        $date.value = today.toISOString().slice(0,10);
-      }
-
-let chart;
-  const colors = { MAIN:'rgba(255,99,132,0.9)', STANDBY:'rgba(75,192,192,0.9)', CHECK:'rgba(153,102,255,0.9)' };
-  const dataset = (label, data, color) => ({ label, data: data||[], borderColor: color, backgroundColor: color, tension:0.25, pointRadius:0, borderWidth:2 });
-
-const makePill = (text, ok) => {
-    const span = document.createElement('span');
-    span.className = `badge ${ok ? 'bg-success' : 'bg-secondary'} px-3 py-2`;
-    span.style.borderRadius = '999px';
-    span.textContent = text;
-    return span;
-  };
-
- const computeStatus = s => {
-    const out = {};
-    ['MAIN','STANDBY','CHECK'].forEach(m => {
-      const arr = s?.[m] || [];
-      let last = 0;
-      for (let i = arr.length-1; i >= 0; i--) { if (arr[i] != null) { last = Number(arr[i]) || 0; break; } }
-      out[m] = { value:last, online:last > 0 };
-    });
-    return out;
-  };
-
-   async function load(){
-    if (!ctx) return;
-    const siteId = $site?.value;
-    const day    = $date?.value;
-    const metric = $metric?.value || 'TOTAL_AC_POWER';
-    if (!siteId || !day) return;
-
-    if ($status) $status.innerHTML = '';
-    try{
-      const demo = $demo?.checked ? '&demo=true' : '';
-      const url  = `/admin/charts/intraday?siteId=${encodeURIComponent(siteId)}&day=${encodeURIComponent(day)}&metric=${encodeURIComponent(metric)}&stepMin=1${demo}`;
-      const res  = await fetch(url, { cache:'no-store', credentials:'same-origin' });
-      const ct   = res.headers.get('content-type') || '';
-      if (!res.ok || !ct.includes('application/json')) throw new Error(res.statusText || 'NOT_JSON');
-      const data = await res.json();
-
-       const labels = data.labels || [];
-      const unit   = data.unit || '';
-      const s      = data.series || {};
-
-const ds = [];
-      if (s.MAIN)    ds.push(dataset('MAIN — '+metric,    s.MAIN,    colors.MAIN));
-      if (s.STANDBY) ds.push(dataset('STANDBY — '+metric, s.STANDBY, colors.STANDBY));
-      if (s.CHECK)   ds.push(dataset('CHECK — '+metric,   s.CHECK,   colors.CHECK));
-
- const hasAnyPoints = labels.length > 0 && ds.some(d => (d.data||[]).length > 0);
-      const maxVal = Math.max(
-        ...(s.MAIN || []).map(v => +v||0),
-        ...(s.STANDBY || []).map(v => +v||0),
-        ...(s.CHECK || []).map(v => +v||0),
-        0
-      );
-
-const allZero = hasAnyPoints && maxVal === 0;
-
-      if ($status){
-        const st = computeStatus(s);
-        $status.appendChild(makePill(`MAIN: ${st.MAIN.online ? 'ONLINE' : 'IDLE'}`, st.MAIN.online));
-        $status.appendChild(makePill(`STANDBY: ${st.STANDBY.online ? 'ONLINE' : 'IDLE'}`, st.STANDBY.online));
-        $status.appendChild(makePill(`CHECK: ${st.CHECK.online ? 'ONLINE' : 'IDLE'}`, st.CHECK.online));
-      }
-
-const EPS = 0.05;
-      if (allZero) ds.forEach(d => d.data = (d.data||[]).map(v => v == null ? null : (Number(v) === 0 ? EPS : Number(v))));
-
-      if (emptyEl) {
-        if (!hasAnyPoints) { emptyEl.textContent = 'No data for this day/metric'; emptyEl.style.display = 'flex'; }
-        else if (allZero) {  emptyEl.textContent = 'All values are 0';            emptyEl.style.display = 'flex'; }
-        else { emptyEl.style.display = 'none'; }
-      }
-
-       if (chart) chart.destroy();
-      chart = new Chart(ctx, {
-        type:'line',
-        data:{ labels, datasets: ds },
-        options:{
-          responsive:true, maintainAspectRatio:false,
-          interaction:{ mode:'index', intersect:false },
-          plugins:{ legend:{ position:'bottom' } },
-          scales:{
-            y:{ beginAtZero:true, suggestedMin: allZero ? 0 : undefined, suggestedMax: allZero ? (EPS*3) : undefined, title:{ display:true, text:unit } },
-            x:{ ticks:{ maxTicksLimit: 12 } }
+          // Defaults
+          if ($metric && !$metric.value) $metric.value = 'TOTAL_AC_POWER';
+          if ($date && !$date.value) {
+            const today = new Date();
+            today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+            $date.value = today.toISOString().slice(0,10);
           }
-        }
-      });
-if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Date: ${day} • Unit: ${unit}`;
-    }catch(e){
-      console.error(e);
-      if (emptyEl){ emptyEl.textContent = 'Failed to load'; emptyEl.style.display = 'flex'; }
-    }
-  }
 
-  $btn  ?.addEventListener('click',  load);
-  $site ?.addEventListener('change', load);
-  $date ?.addEventListener('change', load);
-  $metric?.addEventListener('change', load);
-  $demo ?.addEventListener('change', load);
+          let chart;
+          const colors = {
+            MAIN:    'rgba(255,99,132,0.9)',
+            STANDBY: 'rgba(75,192,192,0.9)',
+            CHECK:   'rgba(153,102,255,0.9)'
+          };
 
-  load(); // initial
-})();
-</script>
+          const dataset = (label, data, color) => ({
+            label,
+            data: data || [],
+            borderColor: color,
+            backgroundColor: color,
+            tension: 0.25,
+            pointRadius: 0,
+            borderWidth: 2
+          });
 
-<!-- Daily meter-wise charts (5-min refresh + demo fallback) -->
+          // ---------- UI helpers ----------
+          function makePill(text, ok) {
+            const span = document.createElement('span');
+            span.className = `badge ${ok ? 'bg-success' : 'bg-secondary'} px-3 py-2`;
+            span.style.borderRadius = '999px';
+            span.textContent = text;
+            return span;
+          }
+
+          // Compute ONLINE/IDLE from the last non-null point; add last sample time
+          function computeStatus(seriesMap, labels, unit) {
+            const out = {};
+            const THRESH = unit === 'kW' ? 0.5 : 0.05; // power vs energy threshold
+            ['MAIN','STANDBY','CHECK'].forEach(m => {
+              const arr = seriesMap?.[m] || [];
+              let lastIdx = -1, lastVal = 0;
+              for (let i = arr.length - 1; i >= 0; i--) {
+                const v = arr[i];
+                if (v != null) { lastIdx = i; lastVal = Number(v) || 0; break; }
+              }
+              out[m] = {
+                value: lastVal,
+                online: lastVal >= THRESH,
+                lastAt: (lastIdx >= 0 && labels?.[lastIdx]) ? labels[lastIdx] : null
+              };
+            });
+            return out;
+          }
+
+          function buildChips(totals){
+            if (!$chips) return;         // safe if not present in DOM
+            $chips.innerHTML = '';
+            ['MAIN','STANDBY','CHECK'].forEach(m => {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'btn btn-outline-success btn-sm';
+              btn.style.borderRadius = '12px';
+              btn.innerHTML = `<div class="fw-bold">${m}</div><div class="small">${(totals[m]??0).toLocaleString()} ${totals.unit||''}</div>`;
+              btn.onclick = () => {
+                if (!chart) return;
+                const idx = chart.data.datasets.findIndex(d => d.label.startsWith(m));
+                if (idx >= 0) {
+                  chart.setDatasetVisibility(idx, !chart.isDatasetVisible(idx));
+                  chart.update();
+                }
+              };
+              $chips.appendChild(btn);
+            });
+          }
+
+          // Ensure JSON (catches 302 to login/HTML errors)
+          async function safeJson(res) {
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) throw new Error('NOT_JSON');
+            return res.json();
+          }
+
+          async function load() {
+            if (!ctx) return;
+            const siteId = $site?.value;
+            const day    = $date?.value;
+            const metric = $metric?.value || 'TOTAL_AC_POWER';
+            if (!siteId || !day) return;
+
+            // Clear pills while loading
+            if ($status) $status.innerHTML = '';
+
+            try {
+              const url = `/admin/charts/intraday?siteId=${encodeURIComponent(siteId)}&day=${encodeURIComponent(day)}&metric=${encodeURIComponent(metric)}&stepMin=1`;
+              const res = await fetch(url, { cache:'no-store', credentials:'same-origin' });
+              if (!res.ok) throw new Error(res.statusText);
+              const data = await safeJson(res);
+
+              const labels = data.labels || [];
+              const unit   = data.unit || '';
+              const s      = data.series || {};
+
+              // ---------- Status pills ----------
+              if ($status) {
+                const st = computeStatus(s, labels, unit);
+                $status.innerHTML = '';
+                ['MAIN','STANDBY','CHECK'].forEach(m => {
+                  const it = st[m];
+                  const txt = `${m}: ${it.online ? 'ONLINE' : 'IDLE'}${it.lastAt ? ` · ${it.lastAt}` : ''}`;
+                  $status.appendChild(makePill(txt, it.online));
+                });
+              }
+
+              // ---------- Datasets ----------
+              const ds = [];
+              if (s.MAIN)    ds.push(dataset('MAIN — '+metric,    s.MAIN,    colors.MAIN));
+              if (s.STANDBY) ds.push(dataset('STANDBY — '+metric, s.STANDBY, colors.STANDBY));
+              if (s.CHECK)   ds.push(dataset('CHECK — '+metric,   s.CHECK,   colors.CHECK));
+
+              const values   = [ ...(s.MAIN||[]), ...(s.STANDBY||[]), ...(s.CHECK||[]) ].map(v=>+v||0);
+              const maxVal   = values.reduce((m,v)=> Math.max(m,v), 0);
+              const hasPoints= labels.length > 0 && ds.some(d => (d.data||[]).length > 0);
+              const allZero  = hasPoints && maxVal === 0;
+
+              // Visual baseline for all-zero (so a line is visible)
+              const EPS = metric.includes('POWER') ? 0.01 : 0.05;
+              if (allZero) {
+                ds.forEach(d => d.data = (d.data||[]).map(v => v == null ? null : (Number(v) === 0 ? EPS : Number(v))));
+              }
+
+              // Empty overlay
+              if (emptyEl) {
+                if (!hasPoints) {
+                  emptyEl.textContent = 'No data returned for this day/metric';
+                  emptyEl.style.display = 'flex';
+                } else if (allZero) {
+                  emptyEl.textContent = 'All values are 0 — no activity in this window';
+                  emptyEl.style.display = 'flex';
+                } else {
+                  emptyEl.style.display = 'none';
+                }
+              }
+
+              // Render chart
+              if (chart) chart.destroy();
+              chart = new Chart(ctx, {
+                type:'line',
+                data:{ labels, datasets: ds },
+                options:{
+                  responsive:true,
+                  maintainAspectRatio:false,
+                  interaction:{ mode:'index', intersect:false },
+                  plugins:{ legend:{ position:'bottom' } },
+                  scales:{
+                    y:{
+                      beginAtZero:true,
+                      suggestedMin: allZero ? 0 : undefined,
+                      suggestedMax: allZero ? (EPS * 3) : undefined,
+                      title:{ display:true, text:unit }
+                    },
+                    x:{ ticks:{ maxTicksLimit: 12 } }
+                  }
+                }
+              });
+
+              // Totals chips (last values)
+              const totals = { unit };
+              ['MAIN','STANDBY','CHECK'].forEach(m => {
+                const arr = s[m] || [];
+                let last = 0;
+                for (let i = arr.length-1; i >= 0; i--) { if (arr[i] != null) { last = Number(arr[i]) || 0; break; } }
+                totals[m] = Math.round((last + Number.EPSILON) * 10)/10;
+              });
+              buildChips(totals);
+
+              // Legend
+              if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Date: ${day} • Unit: ${unit}`;
+
+            } catch (e) {
+              console.error('Intraday load error:', e);
+              if (emptyEl) {
+                emptyEl.textContent = (e && e.message === 'NOT_JSON') ? 'Not authorized / session expired' : 'Failed to load';
+                emptyEl.style.display = 'flex';
+              }
+            }
+          }
+
+          // Events
+          $btn  ?.addEventListener('click',  load);
+          $site ?.addEventListener('change', load);
+          $date ?.addEventListener('change', load);
+          $metric?.addEventListener('change',load);
+
+          // Initial load
+          load();
+        })();
+    </script>
+
+    <!-- Daily meter-wise charts (5-min refresh + demo fallback) -->
     <script>
         (() => {
           const $site = document.getElementById('siteSelect');
           const $days = document.getElementById('daysSelect');
           const $btn  = document.getElementById('refreshBtn');
-          const $demo = document.getElementById('dayDemo');
 
           const endpoints = {
-            adminSeries: (siteId, days, demo) => `/admin/charts/day-meter-series?siteId=${siteId}&days=${days}${demo ? '&demo=true' : ''}`,
+            adminSeries: (siteId, days) => `/admin/charts/day-meter-series?siteId=${siteId}&days=${days}`,
             labels: (siteId) => `/admin/charts/meter-labels?siteId=${siteId}`
           };
 
-          let charts = { chAcDaily:null, chAcExportDaily:null, chAcImportDaily:null, chDcDaily:null, chMaxPower:null };
-          const meterOrder  = ['MAIN','STANDBY','CHECK'];
-          const meterColors = { MAIN:'rgba(54,162,235,0.9)', STANDBY:'rgba(255,159,64,0.9)', CHECK:'rgba(75,192,192,0.9)' };
-          let   meterLabels = { MAIN:'MAIN', STANDBY:'STANDBY', CHECK:'CHECK' };
+          let charts = {
+            chAcDaily: null,
+            chAcExportDaily: null,
+            chAcImportDaily: null,
+            chDcDaily: null,
+            chMaxPower: null
+          };
+
+          const meterOrder = ['MAIN','STANDBY','CHECK'];
+          const meterColors = {
+            MAIN:'rgba(54,162,235,0.9)',
+            STANDBY:'rgba(255,159,64,0.9)',
+            CHECK:'rgba(75,192,192,0.9)'
+          };
+          let meterLabels = { MAIN:'MAIN', STANDBY:'STANDBY', CHECK:'CHECK' };
 
           async function loadLabels(siteId){
             try{
@@ -513,18 +642,23 @@ if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Da
               data: src[m] || [],
               borderColor: meterColors[m],
               backgroundColor: meterColors[m],
-              tension:.25, pointRadius:0, borderWidth:2
+              tension: .25,
+              pointRadius: 0,
+              borderWidth: 2
             }));
           }
 
           function bumpAllZeroDatasets(datasets, unitKey){
             const EPS = unitKey === 'kW' ? 0.01 : 0.05;
-            const maxVal = Math.max(0, ...datasets.flatMap(d => d.data||[]).map(v => Number(v||0)));
-            if (maxVal === 0){
-              datasets.forEach(d => d.data = (d.data||[]).map(v => v == null ? null : (Number(v) === 0 ? EPS : Number(v))));
-              return { suggestedMin:0, suggestedMax: EPS*3 };
+            const allValues = datasets.flatMap(d => d.data || []).map(v => Number(v || 0));
+            const maxVal = allValues.reduce((m,v)=> Math.max(m, v), 0);
+            if (maxVal === 0) {
+              datasets.forEach(d => {
+                d.data = (d.data || []).map(v => v == null ? null : (Number(v) === 0 ? EPS : Number(v)));
+              });
+              return {suggestedMin: 0, suggestedMax: EPS * 3};
             }
-            return { suggestedMin:0, suggestedMax: maxVal*1.2 };
+            return {suggestedMin: 0, suggestedMax: Math.max(maxVal * 1.2, 1)};
           }
 
           function makeConfig(labels, datasets, yTitle, yRange){
@@ -532,7 +666,8 @@ if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Da
               type:'line',
               data:{ labels, datasets },
               options:{
-                responsive:true, maintainAspectRatio:false,
+                responsive:true,
+                maintainAspectRatio:false,
                 interaction:{ mode:'index', intersect:false },
                 plugins:{ legend:{ position:'bottom' } },
                 scales:{
@@ -563,11 +698,30 @@ if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Da
 
             const keys = resolveMetricKeys(series);
 
-            { const ds = toDatasets(keys.acActiveEnergyKwh, series); const y = bumpAllZeroDatasets(ds,'kWh'); charts.chAcDaily       = upsertChart(charts.chAcDaily,      'chAcDaily',      makeConfig(labels, ds, 'kWh', y)); }
-            { const ds = toDatasets(keys.acExportEnergyKwh, series); const y = bumpAllZeroDatasets(ds,'kWh'); charts.chAcExportDaily = upsertChart(charts.chAcExportDaily, 'chAcExportDaily', makeConfig(labels, ds, 'kWh', y)); }
-            { const ds = toDatasets(keys.acImportEnergyKwh, series); const y = bumpAllZeroDatasets(ds,'kWh'); charts.chAcImportDaily = upsertChart(charts.chAcImportDaily, 'chAcImportDaily', makeConfig(labels, ds, 'kWh', y)); }
-            { const ds = toDatasets(keys.dcEnergyKwh,       series); const y = bumpAllZeroDatasets(ds,'kWh'); charts.chDcDaily       = upsertChart(charts.chDcDaily,      'chDcDaily',      makeConfig(labels, ds, 'kWh', y)); }
-            { const ds = toDatasets(keys.maxAcPowerKw,      series); const y = bumpAllZeroDatasets(ds,'kW');  charts.chMaxPower      = upsertChart(charts.chMaxPower,     'chMaxPower',     makeConfig(labels, ds, 'kW',  y)); }
+            // AC Active Energy (kWh)
+            { const ds = toDatasets(keys.acActiveEnergyKwh, series);
+              const y  = bumpAllZeroDatasets(ds, 'kWh');
+              charts.chAcDaily = upsertChart(charts.chAcDaily, 'chAcDaily', makeConfig(labels, ds, 'kWh', y)); }
+
+            // AC Export Energy (kWh)
+            { const ds = toDatasets(keys.acExportEnergyKwh, series);
+              const y  = bumpAllZeroDatasets(ds, 'kWh');
+              charts.chAcExportDaily = upsertChart(charts.chAcExportDaily, 'chAcExportDaily', makeConfig(labels, ds, 'kWh', y)); }
+
+            // AC Import Energy (kWh)
+            { const ds = toDatasets(keys.acImportEnergyKwh, series);
+              const y  = bumpAllZeroDatasets(ds, 'kWh');
+              charts.chAcImportDaily = upsertChart(charts.chAcImportDaily, 'chAcImportDaily', makeConfig(labels, ds, 'kWh', y)); }
+
+            // DC Energy (kWh)
+            { const ds = toDatasets(keys.dcEnergyKwh, series);
+              const y  = bumpAllZeroDatasets(ds, 'kWh');
+              charts.chDcDaily = upsertChart(charts.chDcDaily, 'chDcDaily', makeConfig(labels, ds, 'kWh', y)); }
+
+            // Max AC Power (kW)
+            { const ds = toDatasets(keys.maxAcPowerKw, series);
+              const y  = bumpAllZeroDatasets(ds, 'kW');
+              charts.chMaxPower = upsertChart(charts.chMaxPower, 'chMaxPower', makeConfig(labels, ds, 'kW', y)); }
           }
 
           async function loadAndRender(){
@@ -576,7 +730,7 @@ if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Da
             if (!siteId) return;
             try{
               await loadLabels(siteId);
-              const res = await fetch(endpoints.adminSeries(siteId, days, $demo?.checked), { cache:'no-store' });
+              const res = await fetch(endpoints.adminSeries(siteId, days), { cache:'no-store' });
               if (!res.ok) throw new Error(res.statusText);
               const data = await res.json();
               renderAll(data.labels || [], data.series || {});
@@ -586,13 +740,105 @@ if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Da
             }
           }
 
-          $btn ?.addEventListener('click',  loadAndRender);
+          $btn ?.addEventListener('click', loadAndRender);
           $site?.addEventListener('change', loadAndRender);
           $days?.addEventListener('change', loadAndRender);
-          $demo?.addEventListener('change', loadAndRender);
 
           loadAndRender(); // initial
         })();
     </script>
+
+    <script>
+        (() => {
+          const $siteSelect = document.getElementById('siteSelect') || document.getElementById('tvSite');
+          const siteId = () => ($siteSelect?.value || '').toString();
+          const fmtPct = v => (v==null ? '—' : (Number(v).toFixed(1)+'%'));
+          const fmtKwh = v => (v==null ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1})+' kWh');
+
+          const el = id => document.getElementById(id);
+
+          function set(elm, text){ if (elm) elm.textContent = text; }
+          function show(elm, on){ if (elm) elm.classList.toggle('d-none', !on); }
+
+          function ageFrom(iso){
+            if (!iso) return {txt:'—', ms:Infinity};
+            const t = new Date(iso).getTime();
+            if (!t) return {txt:'—', ms:Infinity};
+            const ms = Date.now() - t;
+            const min = Math.floor(ms/60000);
+            if (min < 60) return {txt:`${min} min`, ms};
+            const h = Math.floor(min/60), m = min%60;
+            return {txt:`${h}h ${m}m`, ms};
+          }
+
+          async function getJson(url){
+            try{
+              const r = await fetch(url, {cache:'no-store', credentials:'same-origin'});
+              if (!r.ok) throw new Error(r.statusText);
+              const ct = r.headers.get('content-type')||'';
+              if (!ct.includes('application/json')) throw new Error('NOT_JSON');
+              return await r.json();
+            }catch(e){ return null; }
+          }
+
+          async function loadRms(){
+            const sid = siteId();
+            if (!sid) return;
+
+            // 1) Performance summary
+            const sum = await getJson(`/admin/rms/summary?siteId=${encodeURIComponent(sid)}`);
+            set(el('kpiPR'),    sum ? fmtPct(sum.pr) : '—');
+            set(el('kpiCUF'),   sum ? fmtPct(sum.cuf) : '—');
+            set(el('kpiEToday'),sum ? fmtKwh(sum.energyTodayKwh) : '—');
+            set(el('kpiEMtd'),  sum ? fmtKwh(sum.energyMtdKwh) : '—');
+            set(el('kpiAvail'), sum ? fmtPct(sum.availability) : '—');
+            set(el('rmsLastUpdated'), sum?.updatedAtIso ? new Date(sum.updatedAtIso).toLocaleString() : '—');
+
+            // 2) Devices status
+            const stat = await getJson(`/admin/rms/devices/status?siteId=${encodeURIComponent(sid)}`);
+            set(el('devOn'),      stat?.online ?? '—');
+            set(el('devOff'),     stat?.offline ?? '—');
+            const age = ageFrom(stat?.lastPacketIso);
+            set(el('lastPkt'), age.txt);
+            set(el('alertsOpen'), stat?.alertsOpen ?? '—');
+
+            // Latency banner if last packet older than 15 minutes
+            show(el('telemetryBanner'), age.ms > 15*60*1000);
+            set(el('lastPacketAge'), age.txt);
+
+            // 3) Active alarms
+            const alarms = await getJson(`/admin/rms/alarms?siteId=${encodeURIComponent(sid)}&limit=5`);
+            const $body = el('alarmsBody');
+            if ($body){
+              $body.innerHTML = '';
+              const list = Array.isArray(alarms) ? alarms : [];
+              if (list.length === 0){
+                $body.innerHTML = '<tr><td colspan="4" class="text-muted small text-center py-3">No alarms</td></tr>';
+              } else {
+                list.forEach(a => {
+                  const tr = document.createElement('tr');
+                  const sev = (a.severity||'').toUpperCase();
+                  const sevClass =
+                    sev === 'CRITICAL' ? 'badge bg-danger' :
+                    sev === 'MAJOR'    ? 'badge bg-warning text-dark' :
+                    'badge bg-secondary';
+                  tr.innerHTML = `
+                    <td class="small">${a.timeIso ? new Date(a.timeIso).toLocaleString() : '—'}</td>
+                    <td class="small">${a.device || '—'}</td>
+                    <td><span class="${sevClass}">${sev||'—'}</span></td>
+                    <td class="small">${a.title || '—'}</td>`;
+                  $body.appendChild(tr);
+                });
+              }
+            }
+          }
+
+          // Run now & when site changes
+          loadRms();
+          $siteSelect?.addEventListener('change', loadRms);
+        })();
+    </script>
+
+</section>
 </body>
 </html>
