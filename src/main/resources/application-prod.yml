@@ -31,19 +31,19 @@ management:
   endpoints:
     web:
       exposure:
-        include: "health,info"
+        include:
+          - health
+          - info
 
-# src/main/resources/application.yml  (or application-dev.yml if you use profiles)
 lkf:
+  monitoring:
+    site-id: 1
+    device-id: 1
+    offline-threshold-minutes: 10
+    zero-window-minutes: 5
+    zero-min-readings: 3
+    zero-threshold-kw: 0.1
+    daylight-start: "09:00"
+    daylight-end: "17:00"
   security:
-    partnerStrict: ture
-
-<<<<<<< HEAD
-some:
-  property: ture
-
-=======
-    partner:
-      access:
-        enabled=true:
->>>>>>> 9169b06 (Update)
+    partnerStrict: true

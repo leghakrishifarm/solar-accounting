@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>WS Tick Test</title>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<body>
+<h3>Live ticks for site 1</h3>
+<pre id="log">connecting…</pre>
+<script>
+    const log = (m)=>{ document.getElementById('log').textContent += `\n${m}`; };
+    const s = new SockJS('/ws');
+    const c = Stomp.over(s); c.debug = null;
+    c.connect({}, ()=> {
+      log('connected, subscribing /topic/intraday/1');
+      c.subscribe('/topic/intraday/1', msg => {
+        try {
+          const tick = JSON.parse(msg.body);
+          log(`[${tick.label}] MAIN=${tick.series.MAIN}  STANDBY=${tick.series.STANDBY}  CHECK=${tick.series.CHECK}`);
+        } catch(e){ log('parse error: '+e); }
+      });
+    }, err => log('connect error: '+err));
+</script>
+</body>

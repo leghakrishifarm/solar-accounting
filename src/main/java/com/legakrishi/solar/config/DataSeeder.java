@@ -25,18 +25,17 @@ public class DataSeeder {
 
             List<EnergySample> batch = new ArrayList<>();
 
-            // seed every 15 minutes
+            // every 15 minutes for the whole day
             for (int minute = 0; minute < 24 * 60; minute += 15) {
                 Instant sampleTime = startZ.plusMinutes(minute).toInstant();
 
                 for (MeterKind mk : MeterKind.values()) {
-                    // skip if already present (per site,time,kind)
+                    // insert only if this (site, time, kind) is missing
                     if (repo.existsBySiteIdAndSampleTimeAndMeterKind(siteId, sampleTime, mk)) {
                         continue;
                     }
 
-                    double daylightFactor = Math.max(0,
-                            Math.sin(Math.PI * (minute / 1440.0))); // 0..1 over the day
+                    double daylightFactor = Math.max(0, Math.sin(Math.PI * (minute / 1440.0))); // 0..1
 
                     EnergySample s = new EnergySample();
                     s.setSiteId(siteId);

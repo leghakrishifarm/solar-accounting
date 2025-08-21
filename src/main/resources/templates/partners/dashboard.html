@@ -5,15 +5,18 @@
 <head>
     <title layout:fragment="title">Partner Dashboard</title>
 
+    <!-- Bootstrap Icons (used by many <i class="bi ..."> below) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+
     <!-- Chart.js for all charts on this page -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
     <style>
         /* Optional chart height helper */
         .chart-wrap { height: 300px; }
-        @media (max-width: 991px) { .chart-wrap { height: 260px; } }
+        @media (max-width: 991px) { .chart-wrap { height: 260px; }
 
-        /* Online badge */
+        /* Online badge dot */
         .lkf-dot{
           display:inline-block;width:10px;height:10px;border-radius:50%;
           background:#6c757d; /* gray default */
@@ -43,7 +46,8 @@
         <div class="col-6 col-md-4">
             <div class="card text-center shadow-sm border-0 p-3">
                 <div class="card-title small text-muted">Total Paid</div>
-                <div class="fs-4 fw-bold text-success" th:text="${#numbers.formatDecimal(totalPaid, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+                <div class="fs-4 fw-bold text-success"
+                     th:text="${#numbers.formatDecimal(totalPaid, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
             </div>
         </div>
         <div class="col-6 col-md-4">
@@ -54,30 +58,34 @@
         </div>
     </div>
 
-    <!-- Admin-level Stats -->
+    <!-- Admin-level Stats (read-only for partner) -->
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-3">
             <div class="card text-center shadow-sm border-0 p-3">
                 <div class="card-title small text-muted">Total Income</div>
-                <div class="fs-6 fw-bold" th:text="${#numbers.formatDecimal(totalIncomeReceived, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+                <div class="fs-6 fw-bold"
+                     th:text="${#numbers.formatDecimal(totalIncomeReceived, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="card text-center shadow-sm border-0 p-3">
                 <div class="card-title small text-muted">Govt Deductions</div>
-                <div class="fs-6 fw-bold" th:text="${#numbers.formatDecimal(totalGovernmentDeductions, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+                <div class="fs-6 fw-bold"
+                     th:text="${#numbers.formatDecimal(totalGovernmentDeductions, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="card text-center shadow-sm border-0 p-3">
                 <div class="card-title small text-muted">Total Outgoing</div>
-                <div class="fs-6 fw-bold" th:text="${#numbers.formatDecimal(totalOutgoing, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+                <div class="fs-6 fw-bold"
+                     th:text="${#numbers.formatDecimal(totalOutgoing, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="card text-center shadow-sm border-0 p-3">
                 <div class="card-title small text-muted">Balance</div>
-                <div class="fs-6 fw-bold" th:text="${#numbers.formatDecimal(balanceAmount, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
+                <div class="fs-6 fw-bold"
+                     th:text="${#numbers.formatDecimal(balanceAmount, 1, 'COMMA', 2, 'POINT')}">₹0.00</div>
             </div>
         </div>
     </div>
@@ -143,9 +151,7 @@
                     <!-- 1 site -->
                     <span th:if="${sites != null and #lists.size(sites) == 1}"
                           class="badge bg-info text-dark"
-                          th:text="${sites[0].site.name != null ? sites[0].site.name : ('Site #' + sites[0].site.id)}">
-                    Site
-                  </span>
+                          th:text="${sites[0].site.name != null ? sites[0].site.name : ('Site #' + sites[0].site.id)}">Site</span>
 
                     <!-- 2+ sites: show dropdown -->
                     <form th:if="${sites != null and #lists.size(sites) > 1}"
@@ -174,7 +180,6 @@
                       if (!urlHasSite) {
                         var stored = null;
                         try { stored = localStorage.getItem('lkf.siteId'); } catch(e){}
-
                         if (stored) {
                           var sel = document.querySelector('select[name="siteId"]');
                           if (sel && Array.from(sel.options).some(o => o.value === stored)) {
@@ -192,51 +197,55 @@
                         });
                       }
                     })();
-                     /*]]>*/
+                    /*]]>*/
                 </script>
 
                 <!-- RIGHT: time badge + ONLINE badge + ALERT badge -->
                 <div class="d-flex align-items-center">
-                    <span class="badge bg-light text-dark">
-                        <i class="bi bi-clock me-1"></i>
-                        <span th:text="${kpis.lastUpdated}">—</span>
-                    </span>
+          <span class="badge bg-light text-dark">
+            <i class="bi bi-clock me-1"></i>
+            <span th:text="${kpis.lastUpdated}">—</span>
+          </span>
 
                     <span id="lkf-online" class="badge bg-light text-dark ms-2">
-                      <span class="lkf-dot me-1"></span>
-                      <span id="lkf-online-text">Checking…</span>
-                    </span>
+            <span class="lkf-dot me-1"></span>
+            <span id="lkf-online-text">Checking…</span>
+          </span>
 
                     <span id="lkf-alert" class="badge bg-danger ms-2 d-none">
-                      <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                      <span id="lkf-alert-text">ALERT</span>
-                      <a href="#" id="lkf-ack" class="link-light text-decoration-underline ms-2 small">Acknowledge</a>
-                    </span>
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            <span id="lkf-alert-text">ALERT</span>
+            <a href="#" id="lkf-ack" class="link-light text-decoration-underline ms-2 small">Acknowledge</a>
+          </span>
                 </div>
             </div>
 
             <div class="row text-center g-3">
                 <div class="col-6 col-md-3">
-                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.currentPowerKw,1,1)} + ' kW'">0.0 kW</div>
+                    <div class="h3 mb-0"
+                         th:text="${#numbers.formatDecimal(kpis.currentPowerKw, 1, 'COMMA', 1, 'POINT')} + ' kW'">0.0 kW</div>
                     <div class="text-muted small">Current Power</div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.energyTodayKwh,1,1)} + ' kWh'">0.0 kWh</div>
+                    <div class="h3 mb-0"
+                         th:text="${#numbers.formatDecimal(kpis.energyTodayKwh, 1, 'COMMA', 1, 'POINT')} + ' kWh'">0.0 kWh</div>
                     <div class="text-muted small">Energy Today</div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.energyMonthKwh,0,0)} + ' kWh'">0 kWh</div>
+                    <div class="h3 mb-0"
+                         th:text="${#numbers.formatDecimal(kpis.energyMonthKwh, 1, 'COMMA', 0, 'POINT')} + ' kWh'">0 kWh</div>
                     <div class="text-muted small">This Month</div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="h3 mb-0" th:text="${#numbers.formatDecimal(kpis.energyTotalKwh,0,0)} + ' kWh'">0 kWh</div>
+                    <div class="h3 mb-0"
+                         th:text="${#numbers.formatDecimal(kpis.energyTotalKwh, 1, 'COMMA', 0, 'POINT')} + ' kWh'">0 kWh</div>
                     <div class="text-muted small">Lifetime Energy</div>
                 </div>
+
                 <a class="btn btn-sm btn-outline-secondary ms-2"
                    th:href="@{/partners/report/daily(siteId=${currentSiteId})}">
                     Daily Report
                 </a>
-
             </div>
         </div>
     </div>
@@ -245,13 +254,12 @@
     <script th:inline="javascript">
         /*<![CDATA[*/
         (function statusPing(){
-         fetch(/*[[@{/partners/api/online(siteId=${currentSiteId})}]]*/'')
+          fetch(/*[[@{/partners/api/online(siteId=${currentSiteId})}]]*/'')
             .then(r => r.json())
             .then(d => {
               const dot = document.querySelector('#lkf-online .lkf-dot');
               const text = document.getElementById('lkf-online-text');
               const online = !!d.online;
-
               dot.classList.remove('online','offline');
               dot.classList.add(online ? 'online' : 'offline');
               text.textContent = online ? 'Online' : 'Offline';
@@ -262,7 +270,6 @@
               dot.classList.remove('online'); dot.classList.add('offline');
               text.textContent = 'Offline';
             });
-
           setTimeout(statusPing, 60000);
         })();
         /*]]>*/
@@ -278,7 +285,6 @@
               const el = document.getElementById('lkf-alert');
               const txt = document.getElementById('lkf-alert-text');
               if (!el || !txt) return;
-
               if (d.hasAlert) {
                 el.classList.remove('d-none');
                 txt.textContent = d.message || 'ALERT';
@@ -288,7 +294,6 @@
               }
             })
             .catch(() => {});
-
           setTimeout(alertPing, 60000);
         })();
 
@@ -349,12 +354,12 @@
               document.getElementById('ms-energy').textContent = ((d.energyMonthKwh ?? 0).toFixed(1)) + ' kWh';
               document.getElementById('ms-avg').textContent    = ((d.avgDailyKwh ?? 0).toFixed(1)) + ' kWh/day';
               document.getElementById('ms-peak').textContent   = ((d.peakPowerKw ?? 0).toFixed(1)) + ' kW';
-              document.getElementById('ms-cuf').textContent    =  (d.cufPct != null) ? (d.cufPct.toFixed(1) + ' %') : '—';
+              document.getElementById('ms-cuf').textContent    = (d.cufPct != null) ? (d.cufPct.toFixed(1) + ' %') : '—';
             })
             .catch(()=>{});
           setTimeout(loadMonthSummary, 60000);
         })();
-         /*]]>*/
+        /*]]>*/
     </script>
 
     <!-- Energy & Power — Meter-wise (NEW) -->
@@ -452,15 +457,33 @@
 
           let meterLabels = { MAIN: 'MAIN', STANDBY: 'STANDBY', CHECK: 'CHECK' };
 
+          async function safeJson(res){
+            const ct = res.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) throw new Error('NOT_JSON');
+            return res.json();
+          }
+
           async function loadLabels(siteId) {
-            const res = await fetch(endpoints.labels(siteId), { cache: 'no-store' });
-            if (res.ok) meterLabels = await res.json();
+            try {
+              const res = await fetch(endpoints.labels(siteId), { cache: 'no-store' });
+              if (res.ok) meterLabels = await safeJson(res);
+            } catch (_) { /* ignore */ }
+          }
+
+          function bumpAllZero(datasets, unitKey){
+            const EPS = unitKey === 'kW' ? 0.01 : 0.05;
+            const maxV = Math.max(0, ...datasets.flatMap(d => (d.data || []).map(x => +x || 0)));
+            if (maxV === 0) {
+              datasets.forEach(d => d.data = (d.data || []).map(v => (v == null ? null : (+v === 0 ? EPS : +v))));
+              return { suggestedMin: 0, suggestedMax: EPS * 3 };
+            }
+            return {};
           }
 
           function toDatasets(metric, series) {
             return meterOrder.map(m => ({
               label: meterLabels[m] || m,
-              data: (series[metric]?.[m]) || [],
+              data:  (series?.[metric]?.[m]) || [],
               borderColor: meterColors[m],
               backgroundColor: meterColors[m],
               tension: 0.25,
@@ -469,7 +492,7 @@
             }));
           }
 
-          function makeConfig(labels, datasets, yTitle) {
+          function makeConfig(labels, datasets, yTitle, yRange) {
             return {
               type: 'line',
               data: { labels, datasets },
@@ -483,49 +506,67 @@
                 },
                 scales: {
                   x: { ticks: { autoSkip: true, maxTicksLimit: 12 } },
-                  y: { beginAtZero: true, title: { display: true, text: yTitle } }
+                  y: { beginAtZero: true, title: { display: true, text: yTitle }, ...(yRange||{}) }
                 }
               }
             };
           }
 
           function upsertChart(instance, canvasId, config) {
-            const ctx = document.getElementById(canvasId)?.getContext('2d');
-            if (!ctx) return instance;
-            if (instance) { instance.destroy(); }
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return instance;
+            const ctx = canvas.getContext('2d');
+            if (instance) instance.destroy();
             return new Chart(ctx, config);
           }
 
           function renderAll(labels, series) {
-            const cfgAcDaily   = makeConfig(labels, toDatasets('acActiveEnergyKwh', series), 'kWh');
-            const cfgAcExport  = makeConfig(labels, toDatasets('acExportEnergyKwh', series), 'kWh');
-            const cfgAcImport  = makeConfig(labels, toDatasets('acImportEnergyKwh', series), 'kWh');
-            const cfgDcDaily   = makeConfig(labels, toDatasets('dcEnergyKwh',       series), 'kWh');
-            const cfgMaxPower  = makeConfig(labels, toDatasets('maxAcPowerKw',      series), 'kW');
+            // AC Active
+            { const ds = toDatasets('acActiveEnergyKwh', series);
+              const yr = bumpAllZero(ds, 'kWh');
+              charts.chAcDaily = upsertChart(charts.chAcDaily, 'chAcDaily', makeConfig(labels, ds, 'kWh', yr)); }
 
-            charts.chAcDaily        = upsertChart(charts.chAcDaily,        'chAcDaily',        cfgAcDaily);
-            charts.chAcExportDaily  = upsertChart(charts.chAcExportDaily,  'chAcExportDaily',  cfgAcExport);
-            charts.chAcImportDaily  = upsertChart(charts.chAcImportDaily,  'chAcImportDaily',  cfgAcImport);
-            charts.chDcDaily        = upsertChart(charts.chDcDaily,        'chDcDaily',        cfgDcDaily);
-            charts.chMaxPower       = upsertChart(charts.chMaxPower,       'chMaxPower',       cfgMaxPower);
+            // AC Export
+            { const ds = toDatasets('acExportEnergyKwh', series);
+              const yr = bumpAllZero(ds, 'kWh');
+              charts.chAcExportDaily = upsertChart(charts.chAcExportDaily, 'chAcExportDaily', makeConfig(labels, ds, 'kWh', yr)); }
+
+            // AC Import
+            { const ds = toDatasets('acImportEnergyKwh', series);
+              const yr = bumpAllZero(ds, 'kWh');
+              charts.chAcImportDaily = upsertChart(charts.chAcImportDaily, 'chAcImportDaily', makeConfig(labels, ds, 'kWh', yr)); }
+
+            // DC Energy
+            { const ds = toDatasets('dcEnergyKwh', series);
+              const yr = bumpAllZero(ds, 'kWh');
+              charts.chDcDaily = upsertChart(charts.chDcDaily, 'chDcDaily', makeConfig(labels, ds, 'kWh', yr)); }
+
+            // Max AC Power
+            { const ds = toDatasets('maxAcPowerKw', series);
+              const yr = bumpAllZero(ds, 'kW');
+              charts.chMaxPower = upsertChart(charts.chMaxPower, 'chMaxPower', makeConfig(labels, ds, 'kW', yr)); }
           }
 
           async function loadAndRender() {
             const days = $days?.value ?? '30';
             if (!currentSiteId) return;
-
-            await loadLabels(currentSiteId);
-
-            const res = await fetch(endpoints.series(currentSiteId, days), { cache: 'no-store' });
-            if (!res.ok) return;
-            const data = await res.json();
-            renderAll(data.labels, data.series);
+            try {
+              await loadLabels(currentSiteId);
+              const res = await fetch(endpoints.series(currentSiteId, days), { cache: 'no-store' });
+              if (!res.ok) throw new Error(res.statusText);
+              const data = await safeJson(res);
+              renderAll(data.labels || [], data.series || {});
+            } catch (e) {
+              console.error('partner day-meter-series error:', e);
+              renderAll([], {});
+            }
           }
 
           $btn?.addEventListener('click', loadAndRender);
           $days?.addEventListener('change', loadAndRender);
 
-          document.addEventListener('DOMContentLoaded', loadAndRender);
+          // Initial render
+          loadAndRender();
         })();
         /*]]>*/
     </script>
@@ -557,23 +598,33 @@
     <script th:inline="javascript">
         /*<![CDATA[*/
         (function loadTodayPower(){
-         fetch(/*[[@{/partners/api/today-power(siteId=${currentSiteId})}]]*/'')
-            .then(r => r.json())
+          function safeJson(res){
+            const ct = res.headers.get('content-type')||'';
+            if (!ct.includes('application/json')) throw new Error('NOT_JSON');
+            return res.json();
+          }
+          fetch(/*[[@{/partners/api/today-power(siteId=${currentSiteId})}]]*/'')
+            .then(safeJson)
             .then(data => {
               document.getElementById('tp-date').textContent = data.date || '';
               document.getElementById('tp-max').textContent = 'Max: ' + (data.maxPower ?? 0).toFixed(1) + ' kW';
               document.getElementById('tp-energy').textContent = 'Energy Today: ' + (data.energyToday ?? 0).toFixed(1) + ' kWh';
 
-              const ctx = document.getElementById('powerChart');
-              if (!ctx) return;
-
+              const el = document.getElementById('powerChart');
+              if (!el) return;
+              const ctx = el.getContext('2d');
               if (window._todayChart) { window._todayChart.destroy(); }
+
+              // If all values are zero, bump a tiny epsilon to make line visible
+              const vals = (data.values || []).map(v => +v || 0);
+              const maxv = Math.max(0, ...vals);
+              const show = (maxv === 0) ? vals.map(v => (v === 0 ? 0.01 : v)) : vals;
 
               window._todayChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                  labels: data.labels,
-                  datasets: [{ label: 'kW', data: data.values, tension: 0.3 }]
+                  labels: data.labels || [],
+                  datasets: [{ label: 'kW', data: show, tension: 0.3, borderWidth: 2, pointRadius: 0 }]
                 },
                 options: {
                   responsive: true,
@@ -611,8 +662,13 @@
     <script th:inline="javascript">
         /*<![CDATA[*/
         (function loadAlerts(){
+          function safeJson(res){
+            const ct = res.headers.get('content-type')||'';
+            if (!ct.includes('application/json')) throw new Error('NOT_JSON');
+            return res.json();
+          }
           fetch(/*[[@{/partners/api/alerts/latest(siteId=${currentSiteId})}]]*/'')
-            .then(r => r.json())
+            .then(safeJson)
             .then(arr => {
               const list = document.getElementById('alertsList');
               const empty = document.getElementById('alertsEmpty');
@@ -634,7 +690,7 @@
                 li.innerHTML = `
                   <div class="me-3">
                     <div class="mb-1">
-                      <span class="badge ${typeClass} me-2">${a.type}</span>
+                      <span class="badge ${typeClass} me-2">${a.type ?? ''}</span>
                       <span>${a.message ?? ''}</span>
                     </div>
                     <div class="small text-muted">${a.triggeredAt ?? ''}</div>

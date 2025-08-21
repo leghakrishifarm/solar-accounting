@@ -1,0 +1,138 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Live Intraday Chart</title>
+<style>
+    body { font-family: system-ui, sans-serif; margin: 20px; }
+    #wrap { max-width: 900px; margin: 0 auto; }
+    canvas { width: 100%; height: 420px; }
+</style>
+
+<div id="wrap">
+    <h3>Live Power — MAIN / STANDBY / CHECK (kW)</h3>
+    <canvas id="c"></canvas>
+    <p id="status">connecting…</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script>
+    const statusEl = document.getElementById('status');
+    const ctx = document.getElementById('c').getContext('2d');
+
+    const labels = [];
+    const dataMain = [];
+    const dataStandby = [];
+    const dataCheck = [];
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'MAIN (kW)',    data: dataMain,    fill: false, tension: 0.25 },
+          { label: 'STANDBY (kW)', data: dataStandby, fill: false, tension: 0.25 },
+          { label: 'CHECK (kW)',   data: dataCheck,   fill: false, tension: 0.25 }
+        ]
+      },
+      options: {
+        animation: false,
+        responsive: true,
+        scales: {
+          x: { ticks: { maxTicksLimit: 12 } },
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Push/Update MAIN and manage labels (the "leader" series)
+    function upsertPointMain(label, value) {
+      const last = labels.length ? labels[labels.length - 1] : null;
+      if (last === label) {
+        dataMain[dataMain.length - 1] = value ?? 0;
+      } else {
+        labels.push(label);
+        dataMain.push(value ?? 0);
+        if (labels.length > 96) { labels.shift(); dataMain.shift(); dataStandby.shift?.(); dataCheck.shift?.(); }
+      }
+      chart.update('none');
+    }
+    // Follow MAIN’s labels for STANDBY
+    function upsertPointStandby(label, value) {
+      const last = labels.length ? labels[labels.length - 1] : null;
+      const has = dataStandby.length && labels.length === dataStandby.length;
+      if (last === label && has) {
+        dataStandby[dataStandby.length - 1] = value ?? 0;
+      } else {
+        dataStandby.push(value ?? 0);
+        if (dataStandby.length > 96) dataStandby.shift();
+      }
+      chart.update('none');
+    }
+    // Follow MAIN’s labels for CHECK
+    function upsertPointCheck(label, value) {
+      const last = labels.length ? labels[labels.length - 1] : null;
+      const has = dataCheck.length && labels.length === dataCheck.length;
+      if (last === label && has) {
+        dataCheck[dataCheck.length - 1] = value ?? 0;
+      } else {
+        dataCheck.push(value ?? 0);
+        if (dataCheck.length > 96) dataCheck.shift();
+      }
+      chart.update('none');
+    }
+
+    // === Prefill today from REST (optional; uses existing session) ===
+    (async function prefill() {
+      try {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const url = `/partners/charts/intraday?siteId=1&date=${yyyy}-${mm}-${dd}&metric=TOTAL_AC_POWER&stepMin=15`;
+
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const j = await res.json();
+
+        labels.length = 0;
+        labels.push(...(j.labels || []));
+        const len = labels.length;
+
+        const s = j.series || {};
+        const m  = (s.MAIN     || Array(len).fill(0)).slice(0, len);
+        const sb = (s.STANDBY  || Array(len).fill(0)).slice(0, len);
+        const ck = (s.CHECK    || Array(len).fill(0)).slice(0, len);
+
+        dataMain.length = 0;    dataMain.push(...m);
+        dataStandby.length = 0; dataStandby.push(...sb);
+        dataCheck.length = 0;   dataCheck.push(...ck);
+
+        chart.update('none');
+        statusEl.textContent = 'history prefilled; waiting for live ticks…';
+      } catch (e) {
+        statusEl.textContent = 'prefill error: ' + e;
+      }
+    })();
+
+    // === Live stream over STOMP/SockJS ===
+    const socket = new SockJS('/ws');
+    const client = Stomp.over(socket);
+    client.debug = null;
+
+    client.connect({}, () => {
+      statusEl.textContent = 'connected. subscribing…';
+      client.subscribe('/topic/intraday/1', msg => {
+        const tick = JSON.parse(msg.body);
+
+        const mainVal    = typeof tick?.series?.MAIN    === 'number' ? tick.series.MAIN    : 0;
+        const standbyVal = typeof tick?.series?.STANDBY === 'number' ? tick.series.STANDBY : 0;
+        const checkVal   = typeof tick?.series?.CHECK   === 'number' ? tick.series.CHECK   : 0;
+
+        // MAIN pushes the label; the others follow
+        upsertPointMain(tick.label, mainVal);
+        upsertPointStandby(tick.label, standbyVal);
+        upsertPointCheck(tick.label, checkVal);
+      });
+    }, err => statusEl.textContent = 'connect error: ' + err);
+</script>

@@ -1,23 +1,23 @@
 package com.legakrishi.solar.controller;
 
+import com.legakrishi.solar.model.JmrReport;
 import com.legakrishi.solar.model.Transaction;
 import com.legakrishi.solar.model.User;
-import com.legakrishi.solar.model.JmrReport;
-import com.legakrishi.solar.repository.PartnerRepository;
-import com.legakrishi.solar.repository.TransactionRepository;
+import com.legakrishi.solar.model.Site;
 import com.legakrishi.solar.repository.BillRepository;
-import com.legakrishi.solar.repository.UserRepository;
 import com.legakrishi.solar.repository.JmrReportRepository;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import com.legakrishi.solar.repository.PartnerRepository;
+import com.legakrishi.solar.repository.SiteRepository;
+import com.legakrishi.solar.repository.TransactionRepository;
+import com.legakrishi.solar.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import com.legakrishi.solar.repository.SiteRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Controller
@@ -31,15 +31,12 @@ public class AdminDashboardController {
     private final JmrReportRepository jmrReportRepo;
     private final SiteRepository siteRepo;
 
-    @Autowired
-    public AdminDashboardController(
-            PartnerRepository partnerRepo,
-            TransactionRepository transRepo,
-            BillRepository billRepo,
-            UserRepository userRepo,
-            JmrReportRepository jmrReportRepo,
-            SiteRepository siteRepo)
-    {
+    public AdminDashboardController(PartnerRepository partnerRepo,
+                                    TransactionRepository transRepo,
+                                    BillRepository billRepo,
+                                    UserRepository userRepo,
+                                    JmrReportRepository jmrReportRepo,
+                                    SiteRepository siteRepo) {
         this.partnerRepo = partnerRepo;
         this.transRepo = transRepo;
         this.billRepo = billRepo;
@@ -50,57 +47,66 @@ public class AdminDashboardController {
 
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
+        // --- Current user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String loggedInEmail = authentication.getName();
+        String loggedInEmail = (authentication != null) ? authentication.getName() : null;
 
-        Optional<User> userOpt = userRepo.findByEmail(loggedInEmail);
+        Optional<User> userOpt = (loggedInEmail != null) ? userRepo.findByEmail(loggedInEmail) : Optional.empty();
         if (userOpt.isEmpty()) {
-            throw new RuntimeException("Logged-in user not found: " + loggedInEmail);
+            // If you prefer redirect: return "redirect:/login";
+            throw new IllegalStateException("Logged-in user not found: " + loggedInEmail);
         }
-
         User user = userOpt.get();
         model.addAttribute("user", user);
 
-        model.addAttribute("partnerCount", partnerRepo.count());
+        // --- High-level counts and balances
+        long partnerCount = partnerRepo.count();
+        model.addAttribute("partnerCount", partnerCount);
 
-        Double totalIncomeReceived = billRepo.sumActualAmountReceivedByStatus("PAID");
-        Double totalGovernmentDeductions = billRepo.sumGovernmentDeductionsByStatus("PAID");
-        Double totalOutgoing = transRepo.sumAmountByType(Transaction.TransactionType.OUTGOING);
-        Double otherIncome = transRepo.sumAmountByType(Transaction.TransactionType.OTHER_INCOME);
+        Double totalIncomeReceived     = billRepo.sumActualAmountReceivedByStatus("PAID");
+        Double totalGovDeductions      = billRepo.sumGovernmentDeductionsByStatus("PAID");
+        Double totalOutgoing           = transRepo.sumAmountByType(Transaction.TransactionType.OUTGOING);
+        Double otherIncome             = transRepo.sumAmountByType(Transaction.TransactionType.OTHER_INCOME);
 
+        // Null-safety
         totalIncomeReceived = totalIncomeReceived != null ? totalIncomeReceived : 0.0;
-        totalGovernmentDeductions = totalGovernmentDeductions != null ? totalGovernmentDeductions : 0.0;
-        totalOutgoing = totalOutgoing != null ? totalOutgoing : 0.0;
-        otherIncome = otherIncome != null ? otherIncome : 0.0;
+        totalGovDeductions  = totalGovDeductions  != null ? totalGovDeductions  : 0.0;
+        totalOutgoing       = totalOutgoing       != null ? totalOutgoing       : 0.0;
+        otherIncome         = otherIncome         != null ? otherIncome         : 0.0;
 
-        double totalIncome = totalIncomeReceived + otherIncome;
-        double balanceAmount = totalIncome - totalGovernmentDeductions - totalOutgoing;
+        double totalIncome   = totalIncomeReceived + otherIncome;
+        double balanceAmount = totalIncome - totalGovDeductions - totalOutgoing;
 
         model.addAttribute("totalIncomeReceived", totalIncomeReceived);
-        model.addAttribute("totalGovernmentDeductions", totalGovernmentDeductions);
+        model.addAttribute("totalGovernmentDeductions", totalGovDeductions);
         model.addAttribute("totalOutgoing", totalOutgoing);
-        model.addAttribute("balanceAmount", balanceAmount);
-        model.addAttribute("totalIncome", totalIncome);
         model.addAttribute("otherIncome", otherIncome);
+        model.addAttribute("totalIncome", totalIncome);
+        model.addAttribute("balanceAmount", balanceAmount);
 
+        // --- Lists / tables
         model.addAttribute("partners", partnerRepo.findAll());
         model.addAttribute("pendingBills", billRepo.findByStatus("PENDING"));
 
-        // Correct: Fetch Last Reading from JmrReport instead of Bill
+        // --- Last JMR reading (for quick glance meters)
         Optional<JmrReport> lastReading = jmrReportRepo.findTopByOrderByReadingDateDesc();
         if (lastReading.isPresent()) {
-            model.addAttribute("lastReading", lastReading.get());
-            model.addAttribute("mainMeter", lastReading.get().getMainMeter());
-            model.addAttribute("checkMeter", lastReading.get().getCheckMeter());
+            JmrReport j = lastReading.get();
+            model.addAttribute("lastReading", j);
+            model.addAttribute("mainMeter", j.getMainMeter());
+            model.addAttribute("checkMeter", j.getCheckMeter());
         } else {
             model.addAttribute("lastReading", null);
             model.addAttribute("mainMeter", null);
             model.addAttribute("checkMeter", null);
         }
-        var sites = siteRepo.findAll();
+
+        // --- Sites + default site for live charts
+        List<Site> sites = siteRepo.findAll();
         model.addAttribute("sites", sites);
         model.addAttribute("defaultSiteId", sites.isEmpty() ? null : sites.get(0).getId());
 
+        // page flag for nav highlighting
         model.addAttribute("page", "dashboard");
 
         return "admin/dashboard";

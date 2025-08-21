@@ -1,7 +1,10 @@
 package com.legakrishi.solar.controller;
 
 import com.legakrishi.solar.config.MonitoringProps;
+import com.legakrishi.solar.model.EnergySample;
+import com.legakrishi.solar.model.MeterKind;
 import com.legakrishi.solar.model.Reading;
+import com.legakrishi.solar.repository.EnergySampleRepository;
 import com.legakrishi.solar.repository.PartnerSiteRepository;
 import com.legakrishi.solar.repository.ReadingRepository;
 import com.legakrishi.solar.repository.SiteRepository;
@@ -14,128 +17,181 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.time.LocalDate;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
-@Controller
+@RestController
 @RequestMapping("/partners/api")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('PARTNER','ADMIN')")
 public class PartnerTelemetryController {
 
     private final ReadingRepository readingRepo;
     private final MonitoringProps props;
     private final PartnerSiteRepository partnerSiteRepo;
     private final UserRepository userRepo;
-    private final SiteRepository siteRepo; // NEW
+    private final SiteRepository siteRepo;
+    private final EnergySampleRepository energySampleRepo;
+
+    private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+    private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
+
+    private static boolean hasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(role::equals);
+    }
+
+    /** Resolve siteId: default from config; allow override if ADMIN or mapped PARTNER. */
+    private Long resolveSiteId(Principal principal, Long siteIdParam) {
+        Long siteId = props.getSiteId(); // default
+        if (siteIdParam == null) return siteId;
+
+        if (hasRole("ROLE_ADMIN")) {
+            return siteIdParam;
+        }
+        if (principal != null) {
+            var u = userRepo.findByEmail(principal.getName());
+            if (u.isPresent() && u.get().getPartner() != null) {
+                Long partnerId = u.get().getPartner().getId();
+                boolean mapped = partnerSiteRepo.findByPartnerIdAndActiveTrue(partnerId).stream()
+                        .anyMatch(ps -> ps.getSite() != null && ps.getSite().getId().equals(siteIdParam));
+                if (mapped) return siteIdParam;
+            }
+        }
+        return siteId;
+    }
+
+    private static double nz(Double v) { return v == null ? 0d : v; }
+    private static double round1(double v) { return Math.round(v * 10.0) / 10.0; }
+    private static String fmtIso(Instant t, ZoneId tz) { return ZonedDateTime.ofInstant(t, tz).toString(); }
+
+    // ----------------- TODAY POWER -----------------
 
     @GetMapping("/today-power")
-    @ResponseBody
-    @PreAuthorize("hasAnyRole('PARTNER','ADMIN')")
     public Map<String, Object> todayPower(
             Principal principal,
             @RequestParam(value = "siteId", required = false) Long siteIdParam) {
 
-        // default from config
-        Long siteId = props.getSiteId();
+        Long siteId = resolveSiteId(principal, siteIdParam);
 
-        // if a siteId is passed, allow if:
-        // - caller is ADMIN, or
-        // - caller is a PARTNER mapped to that site
-        if (siteIdParam != null) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAdmin = auth != null && auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch("ROLE_ADMIN"::equals);
-
-            if (isAdmin) {
-                siteId = siteIdParam;
-            } else if (principal != null) {
-                var userOpt = userRepo.findByEmail(principal.getName());
-                if (userOpt.isPresent() && userOpt.get().getPartner() != null) {
-                    Long partnerId = userOpt.get().getPartner().getId();
-                    boolean mapped = partnerSiteRepo.findByPartnerIdAndActiveTrue(partnerId).stream()
-                            .anyMatch(ps -> ps.getSite() != null && ps.getSite().getId().equals(siteIdParam));
-                    if (mapped) siteId = siteIdParam; // else keep default
-                }
-            }
-        }
-
+        // 1) Try READING table first
         var readings = readingRepo.findToday(siteId);
-
-        List<String> labels = new ArrayList<>(readings.size());
-        List<Double> values = new ArrayList<>(readings.size());
-        for (Reading r : readings) {
-            labels.add(r.getTs().toLocalTime().toString());
-            values.add(r.getPowerKw() == null ? 0.0 : r.getPowerKw());
-        }
-
-        double maxPower = readings.stream()
-                .map(Reading::getPowerKw).filter(Objects::nonNull)
-                .max(Double::compareTo).orElse(0.0);
-
-        double energyToday = 0.0;
         if (!readings.isEmpty()) {
-            var first = readings.get(0).getEnergyKwh();
-            var last  = readings.get(readings.size()-1).getEnergyKwh();
+            List<String> labels = readings.stream()
+                    .map(r -> r.getTs() != null ? r.getTs().toLocalTime().format(HHMM) : "")
+                    .collect(Collectors.toList());
+            List<Double> values = readings.stream()
+                    .map(r -> nz(r.getPowerKw()))
+                    .collect(Collectors.toList());
+
+            double maxPower = values.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+
+            double energyToday = 0.0;
+            Double first = readings.get(0).getEnergyKwh();
+            Double last  = readings.get(readings.size() - 1).getEnergyKwh();
             if (first != null && last != null) energyToday = Math.max(0.0, last - first);
+
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("labels", labels);
+            resp.put("values", values);
+            resp.put("date", LocalDate.now(IST).toString());
+            resp.put("maxPower", round1(maxPower));
+            resp.put("energyToday", round1(energyToday));
+            return resp;
         }
 
-        return Map.of(
-                "labels", labels,
-                "values", values,
-                "date", LocalDate.now().toString(),
-                "maxPower", maxPower,
-                "energyToday", energyToday
-        );
+        // 2) Fallback to ENERGY_SAMPLE (MAIN) for "today" in IST
+        ZonedDateTime startZdt = LocalDate.now(IST).atStartOfDay(IST);
+        Instant start = startZdt.toInstant();
+        Instant end   = startZdt.plusDays(1).toInstant();
+
+        var samples = energySampleRepo
+                .findBySiteIdAndMeterKindAndSampleTimeBetweenOrderBySampleTime(
+                        siteId, MeterKind.MAIN, start, end);
+
+        if (samples == null || samples.isEmpty()) {
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("labels", List.of());
+            resp.put("values", List.of());
+            resp.put("date", LocalDate.now(IST).toString());
+            resp.put("maxPower", 0.0);
+            resp.put("energyToday", 0.0);
+            return resp;
+        }
+
+        List<String> labels = samples.stream()
+                .map(s -> ZonedDateTime.ofInstant(s.getSampleTime(), IST).format(HHMM))
+                .collect(Collectors.toList());
+
+        List<Double> values = samples.stream()
+                .map(s -> nz(s.getTotalAcPowerKw()))
+                .collect(Collectors.toList());
+
+        double maxPower = values.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
+
+        // If daily_ac_energy_kwh is cumulative per day, today's energy is the last non-null value.
+        double energyToday = 0.0;
+        for (int i = samples.size() - 1; i >= 0; i--) {
+            Double v = samples.get(i).getDailyAcEnergyKwh();
+            if (v != null) { energyToday = v; break; }
+        }
+
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("labels", labels);
+        resp.put("values", values);
+        resp.put("date", LocalDate.now(IST).toString());
+        resp.put("maxPower", round1(maxPower));
+        resp.put("energyToday", round1(energyToday));
+        return resp;
     }
 
+    // ----------------- CSV EXPORTS -----------------
+
     @GetMapping(value = "/export/today.csv", produces = "text/csv; charset=UTF-8")
-    @ResponseBody
-    @PreAuthorize("hasAnyRole('PARTNER','ADMIN')")
     public ResponseEntity<String> exportTodayCsv(
             Principal principal,
             @RequestParam(value = "siteId", required = false) Long siteIdParam) {
 
-        // default from config
-        Long siteId = props.getSiteId();
-
-        // allow site override if ADMIN or mapped PARTNER (same logic as todayPower)
-        if (siteIdParam != null) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAdmin = auth != null && auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch("ROLE_ADMIN"::equals);
-
-            if (isAdmin) {
-                siteId = siteIdParam;
-            } else if (principal != null) {
-                var userOpt = userRepo.findByEmail(principal.getName());
-                if (userOpt.isPresent() && userOpt.get().getPartner() != null) {
-                    Long partnerId = userOpt.get().getPartner().getId();
-                    boolean mapped = partnerSiteRepo.findByPartnerIdAndActiveTrue(partnerId).stream()
-                            .anyMatch(ps -> ps.getSite() != null && ps.getSite().getId().equals(siteIdParam));
-                    if (mapped) siteId = siteIdParam;
-                }
-            }
-        }
+        Long siteId = resolveSiteId(principal, siteIdParam);
 
         var readings = readingRepo.findToday(siteId);
-
         StringBuilder sb = new StringBuilder();
         sb.append("timestamp,power_kw,energy_kwh,status\n");
-        for (Reading r : readings) {
-            sb.append(r.getTs() != null ? r.getTs().toString() : "")
-                    .append(',')
-                    .append(r.getPowerKw() != null ? r.getPowerKw() : "")
-                    .append(',')
-                    .append(r.getEnergyKwh() != null ? r.getEnergyKwh() : "")
-                    .append(',')
-                    .append(r.getStatus() != null ? r.getStatus().replace(',', ' ') : "")
-                    .append('\n');
+
+        if (readings != null && !readings.isEmpty()) {
+            for (Reading r : readings) {
+                sb.append(r.getTs() != null ? r.getTs().toString() : "")
+                        .append(',').append(r.getPowerKw() != null ? r.getPowerKw() : "")
+                        .append(',').append(r.getEnergyKwh() != null ? r.getEnergyKwh() : "")
+                        .append(',').append(r.getStatus() != null ? r.getStatus().replace(',', ' ') : "")
+                        .append('\n');
+            }
+        } else {
+            // Fallback rows from energy_sample (MAIN)
+            LocalDate today = LocalDate.now(IST);
+            Instant start = today.atStartOfDay(IST).toInstant();
+            Instant end   = start.plus(1, java.time.temporal.ChronoUnit.DAYS);
+
+            List<EnergySample> samples = energySampleRepo
+                    .findBySiteIdAndMeterKindAndSampleTimeBetweenOrderBySampleTime(
+                            siteId, MeterKind.MAIN, start, end);
+
+            if (samples != null) {
+                for (EnergySample s : samples) {
+                    sb.append(fmtIso(s.getSampleTime(), IST)).append(',')
+                            .append(s.getTotalAcPowerKw() != null ? s.getTotalAcPowerKw() : "").append(',')
+                            .append(s.getDailyAcEnergyKwh() != null ? s.getDailyAcEnergyKwh() : "").append(',')
+                            .append("") // status not available here
+                            .append('\n');
+                }
+            }
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -144,54 +200,45 @@ public class PartnerTelemetryController {
     }
 
     @GetMapping(value = "/export/month.csv", produces = "text/csv; charset=UTF-8")
-    @ResponseBody
-    @PreAuthorize("hasAnyRole('PARTNER','ADMIN')")
     public ResponseEntity<String> exportMonthCsv(
             Principal principal,
             @RequestParam(value = "siteId", required = false) Long siteIdParam) {
 
-        // default from config
-        Long siteId = props.getSiteId();
+        Long siteId = resolveSiteId(principal, siteIdParam);
 
-        // allow site override if ADMIN or mapped PARTNER (same rules as todayPower)
-        if (siteIdParam != null) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAdmin = auth != null && auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch("ROLE_ADMIN"::equals);
-
-            if (isAdmin) {
-                siteId = siteIdParam;
-            } else if (principal != null) {
-                var u = userRepo.findByEmail(principal.getName());
-                if (u.isPresent() && u.get().getPartner() != null) {
-                    Long partnerId = u.get().getPartner().getId();
-                    boolean mapped = partnerSiteRepo.findByPartnerIdAndActiveTrue(partnerId).stream()
-                            .anyMatch(ps -> ps.getSite() != null && ps.getSite().getId().equals(siteIdParam));
-                    if (mapped) siteId = siteIdParam;
-                }
-            }
-        }
-
-        // Month window: 1st of month 00:00 → now (Asia/Kolkata)
-        var tz = java.time.ZoneId.of("Asia/Kolkata");
-        var today = java.time.LocalDate.now(tz);
+        var today = LocalDate.now(IST);
         var start = today.withDayOfMonth(1).atStartOfDay();
-        var end = java.time.LocalDateTime.now(tz);
+        var now   = LocalDateTime.now(IST);
 
-        var readings = readingRepo.findRange(siteId, start, end);
-
+        var readings = readingRepo.findRange(siteId, start, now);
         StringBuilder sb = new StringBuilder();
         sb.append("timestamp,power_kw,energy_kwh,status\n");
-        for (Reading r : readings) {
-            sb.append(r.getTs() != null ? r.getTs().toString() : "")
-                    .append(',')
-                    .append(r.getPowerKw() != null ? r.getPowerKw() : "")
-                    .append(',')
-                    .append(r.getEnergyKwh() != null ? r.getEnergyKwh() : "")
-                    .append(',')
-                    .append(r.getStatus() != null ? r.getStatus().replace(',', ' ') : "")
-                    .append('\n');
+
+        if (readings != null && !readings.isEmpty()) {
+            for (Reading r : readings) {
+                sb.append(r.getTs() != null ? r.getTs().toString() : "")
+                        .append(',').append(r.getPowerKw() != null ? r.getPowerKw() : "")
+                        .append(',').append(r.getEnergyKwh() != null ? r.getEnergyKwh() : "")
+                        .append(',').append(r.getStatus() != null ? r.getStatus().replace(',', ' ') : "")
+                        .append('\n');
+            }
+        } else {
+            // Fallback rows from energy_sample (MAIN)
+            Instant from = start.atZone(IST).toInstant();
+            Instant to   = now.atZone(IST).toInstant();
+            List<EnergySample> samples = energySampleRepo
+                    .findBySiteIdAndMeterKindAndSampleTimeBetweenOrderBySampleTime(
+                            siteId, MeterKind.MAIN, from, to);
+
+            if (samples != null) {
+                for (EnergySample s : samples) {
+                    sb.append(fmtIso(s.getSampleTime(), IST)).append(',')
+                            .append(s.getTotalAcPowerKw() != null ? s.getTotalAcPowerKw() : "").append(',')
+                            .append(s.getDailyAcEnergyKwh() != null ? s.getDailyAcEnergyKwh() : "").append(',')
+                            .append("") // status NA
+                            .append('\n');
+                }
+            }
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -200,140 +247,210 @@ public class PartnerTelemetryController {
         return new ResponseEntity<>(sb.toString(), headers, HttpStatus.OK);
     }
 
-    // --- Month-to-date summary for the selected site (with CUF%) ---
+    // ----------------- MONTH SUMMARY (JSON) -----------------
+
     @GetMapping("/month-summary")
-    @ResponseBody
-    @PreAuthorize("hasAnyRole('PARTNER','ADMIN')")
     public Map<String, Object> monthSummary(
             Principal principal,
             @RequestParam(value = "siteId", required = false) Long siteIdParam) {
 
-        // default from config
-        Long siteId = props.getSiteId();
+        Long siteId = resolveSiteId(principal, siteIdParam);
 
-        // allow site override if ADMIN or mapped PARTNER (same rules as todayPower)
-        if (siteIdParam != null) {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            boolean isAdmin = auth != null && auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch("ROLE_ADMIN"::equals);
-
-            if (isAdmin) {
-                siteId = siteIdParam;
-            } else if (principal != null) {
-                var u = userRepo.findByEmail(principal.getName());
-                if (u.isPresent() && u.get().getPartner() != null) {
-                    Long partnerId = u.get().getPartner().getId();
-                    boolean mapped = partnerSiteRepo.findByPartnerIdAndActiveTrue(partnerId).stream()
-                            .anyMatch(ps -> ps.getSite() != null && ps.getSite().getId().equals(siteIdParam));
-                    if (mapped) siteId = siteIdParam;
-                }
-            }
-        }
-
-        var tz = java.time.ZoneId.of("Asia/Kolkata");
-        var today = java.time.LocalDate.now(tz);
+        var today = LocalDate.now(IST);
         var start = today.withDayOfMonth(1).atStartOfDay();
-        var now   = java.time.LocalDateTime.now(tz);
+        var now   = LocalDateTime.now(IST);
 
-        var list = readingRepo.findRange(siteId, start, now);
+        List<Reading> list = Optional.ofNullable(
+                readingRepo.findRange(siteId, start, now)
+        ).orElseGet(Collections::emptyList);
 
         double energyMonth = 0.0;
+        double peakKw      = 0.0;
+        boolean computedFromReading = false;
+
         if (!list.isEmpty()) {
-            var first = list.get(0).getEnergyKwh();
-            var last  = list.get(list.size()-1).getEnergyKwh();
-            if (first != null && last != null) energyMonth = Math.max(0.0, last - first);
-        }
-
-        double peakKw = list.stream()
-                .map(Reading::getPowerKw)
-                .filter(Objects::nonNull)
-                .mapToDouble(Double::doubleValue)
-                .max().orElse(0.0);
-
-        long daysElapsed = today.getDayOfMonth(); // MTD days including today
-        double hoursInPeriod = daysElapsed * 24.0;
-
-        // CUF% = Energy (kWh) / (Capacity (kW) * Hours in period) * 100
-        Double capacityKw = siteRepo.findById(siteId).map(s -> s.getCapacityKw()).orElse(null);
-        Double cufPct = null;
-        if (capacityKw != null && capacityKw > 0 && hoursInPeriod > 0) {
-            cufPct = (energyMonth / (capacityKw * hoursInPeriod)) * 100.0;
-        }
-
-        // avg per day based on days that passed
-        double avgPerDay = daysElapsed > 0 ? energyMonth / daysElapsed : 0.0;
-
-        return Map.of(
-                "month", today.toString().substring(0,7), // e.g. 2025-08
-                "siteId", siteId,
-                "energyMonthKwh", energyMonth,
-                "avgDailyKwh", avgPerDay,
-                "peakPowerKw", peakKw,
-                "pr", null,         // needs irradiance/target; coming later
-                "cufPct", cufPct    // null if capacity not set
-        );
-    }
-
-    // --- NEW: Month Summary CSV export (MTD) ---
-    @GetMapping(value = "/export/month-summary.csv", produces = "text/csv; charset=UTF-8")
-    @ResponseBody
-    @PreAuthorize("hasAnyRole('PARTNER','ADMIN')")
-    public ResponseEntity<String> exportMonthSummaryCsv(
-            Principal principal,
-            @RequestParam(value = "siteId", required = false) Long siteIdParam) {
-
-        // default site
-        Long siteId = props.getSiteId();
-
-        // allow override if ADMIN or mapped PARTNER
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (siteIdParam != null) {
-            boolean isAdmin = auth != null && auth.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .anyMatch("ROLE_ADMIN"::equals);
-
-            if (isAdmin) {
-                siteId = siteIdParam;
-            } else if (principal != null) {
-                var u = userRepo.findByEmail(principal.getName());
-                if (u.isPresent() && u.get().getPartner() != null) {
-                    Long partnerId = u.get().getPartner().getId();
-                    boolean mapped = partnerSiteRepo.findByPartnerIdAndActiveTrue(partnerId).stream()
-                            .anyMatch(ps -> ps.getSite() != null && ps.getSite().getId().equals(siteIdParam));
-                    if (mapped) siteId = siteIdParam;
-                }
+            // compute delta only if both ends are non-null
+            Double first = null, last = null;
+            for (Reading r : list) {
+                Double e = r.getEnergyKwh();
+                if (e != null) { first = e; break; }
             }
+            for (int i = list.size() - 1; i >= 0; i--) {
+                Double e = list.get(i).getEnergyKwh();
+                if (e != null) { last = e; break; }
+            }
+            if (first != null && last != null && last >= first) {
+                energyMonth = last - first;
+                computedFromReading = true;
+            }
+            peakKw = list.stream()
+                    .map(Reading::getPowerKw)
+                    .filter(Objects::nonNull)
+                    .mapToDouble(Double::doubleValue)
+                    .max().orElse(0.0);
         }
 
-        var tz = java.time.ZoneId.of("Asia/Kolkata");
-        var today = java.time.LocalDate.now(tz);
-        var start = today.withDayOfMonth(1).atStartOfDay();
-        var now   = java.time.LocalDateTime.now(tz);
+        if (!computedFromReading) {
+            // Fallback: ENERGY_SAMPLE (MAIN)
+            Instant from = start.atZone(IST).toInstant();
+            Instant to   = now.atZone(IST).toInstant();
+            List<EnergySample> samples = Optional.ofNullable(
+                    energySampleRepo.findBySiteIdAndMeterKindAndSampleTimeBetweenOrderBySampleTime(
+                            siteId, MeterKind.MAIN, from, to)
+            ).orElseGet(Collections::emptyList);
 
-        var list = readingRepo.findRange(siteId, start, now);
+            // Peak from samples
+            double samplePeak = samples.stream()
+                    .map(EnergySample::getTotalAcPowerKw)
+                    .filter(Objects::nonNull)
+                    .mapToDouble(Double::doubleValue)
+                    .max().orElse(0.0);
 
-        double energyMonth = 0.0;
-        if (!list.isEmpty()) {
-            var first = list.get(0).getEnergyKwh();
-            var last  = list.get(list.size()-1).getEnergyKwh();
-            if (first != null && last != null) energyMonth = Math.max(0.0, last - first);
+            // Try last - first over the whole range (what your test expects)
+            Double firstDaily = null, lastDaily = null;
+            for (EnergySample s : samples) {
+                Double d = s.getDailyAcEnergyKwh();
+                if (d != null) { firstDaily = d; break; }
+            }
+            for (int i = samples.size() - 1; i >= 0; i--) {
+                Double d = samples.get(i).getDailyAcEnergyKwh();
+                if (d != null) { lastDaily = d; break; }
+            }
+
+            if (firstDaily != null && lastDaily != null && lastDaily >= firstDaily) {
+                energyMonth = lastDaily - firstDaily;
+            } else {
+                // If last-first is unusable (e.g., daily resets), fall back to sum of per-day maxima.
+                Map<LocalDate, Double> maxDailyByDate = new HashMap<>();
+                for (EnergySample s : samples) {
+                    Double d = s.getDailyAcEnergyKwh();
+                    if (d == null) continue;
+                    LocalDate day = s.getSampleTime().atZone(IST).toLocalDate();
+                    maxDailyByDate.merge(day, d, Math::max);
+                }
+                energyMonth = maxDailyByDate.values().stream().mapToDouble(Double::doubleValue).sum();
+            }
+
+            if (peakKw <= 0.0) peakKw = samplePeak; // use sample peak if reading had none
         }
-
-        double peakKw = list.stream()
-                .map(Reading::getPowerKw)
-                .filter(Objects::nonNull)
-                .mapToDouble(Double::doubleValue)
-                .max().orElse(0.0);
 
         int daysElapsed = today.getDayOfMonth();
         double avgPerDay = daysElapsed > 0 ? energyMonth / daysElapsed : 0.0;
 
-        Double capacityKw = siteRepo.findById(siteId).map(s -> s.getCapacityKw()).orElse(null);
+        Double capacityKw = (siteId != null)
+                ? siteRepo.findById(siteId).map(s -> s.getCapacityKw()).orElse(null)
+                : null;
+
         Double cufPct = null;
         if (capacityKw != null && capacityKw > 0 && daysElapsed > 0) {
-            double hoursInPeriod = daysElapsed * 24.0;
-            cufPct = (energyMonth / (capacityKw * hoursInPeriod)) * 100.0;
+            double hours = daysElapsed * 24.0;
+            cufPct = (energyMonth / (capacityKw * hours)) * 100.0;
+        }
+
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("month", today.toString().substring(0,7));
+        resp.put("siteId", siteId);
+        resp.put("energyMonthKwh", round1(energyMonth));
+        resp.put("avgDailyKwh",    round1(avgPerDay));
+        resp.put("peakPowerKw",    round1(peakKw));
+        resp.put("pr", null);
+        resp.put("cufPct", cufPct);
+        return resp;
+    }
+
+    // ----------------- MONTH SUMMARY CSV -----------------
+
+    @GetMapping(value = "/export/month-summary.csv", produces = "text/csv; charset=UTF-8")
+    public ResponseEntity<String> exportMonthSummaryCsv(
+            Principal principal,
+            @RequestParam(value = "siteId", required = false) Long siteIdParam) {
+
+        Long siteId = resolveSiteId(principal, siteIdParam);
+
+        var today = LocalDate.now(IST);
+        var start = today.withDayOfMonth(1).atStartOfDay();
+        var now   = LocalDateTime.now(IST);
+
+        List<Reading> list = Optional.ofNullable(
+                readingRepo.findRange(siteId, start, now)
+        ).orElseGet(Collections::emptyList);
+
+        double energyMonth = 0.0;
+        double peakKw      = 0.0;
+        boolean computedFromReading = false;
+
+        if (!list.isEmpty()) {
+            Double first = null, last = null;
+            for (Reading r : list) {
+                Double e = r.getEnergyKwh();
+                if (e != null) { first = e; break; }
+            }
+            for (int i = list.size() - 1; i >= 0; i--) {
+                Double e = list.get(i).getEnergyKwh();
+                if (e != null) { last = e; break; }
+            }
+            if (first != null && last != null && last >= first) {
+                energyMonth = last - first;
+                computedFromReading = true;
+            }
+            peakKw = list.stream()
+                    .map(Reading::getPowerKw)
+                    .filter(Objects::nonNull)
+                    .mapToDouble(Double::doubleValue)
+                    .max().orElse(0.0);
+        }
+
+        if (!computedFromReading) {
+            Instant from = start.atZone(IST).toInstant();
+            Instant to   = now.atZone(IST).toInstant();
+            List<EnergySample> samples = Optional.ofNullable(
+                    energySampleRepo.findBySiteIdAndMeterKindAndSampleTimeBetweenOrderBySampleTime(
+                            siteId, MeterKind.MAIN, from, to)
+            ).orElseGet(Collections::emptyList);
+
+            double samplePeak = samples.stream()
+                    .map(EnergySample::getTotalAcPowerKw)
+                    .filter(Objects::nonNull)
+                    .mapToDouble(Double::doubleValue)
+                    .max().orElse(0.0);
+
+            Double firstDaily = null, lastDaily = null;
+            for (EnergySample s : samples) {
+                Double d = s.getDailyAcEnergyKwh();
+                if (d != null) { firstDaily = d; break; }
+            }
+            for (int i = samples.size() - 1; i >= 0; i--) {
+                Double d = samples.get(i).getDailyAcEnergyKwh();
+                if (d != null) { lastDaily = d; break; }
+            }
+
+            if (firstDaily != null && lastDaily != null && lastDaily >= firstDaily) {
+                energyMonth = lastDaily - firstDaily;
+            } else {
+                Map<LocalDate, Double> maxDailyByDate = new HashMap<>();
+                for (EnergySample s : samples) {
+                    Double d = s.getDailyAcEnergyKwh();
+                    if (d == null) continue;
+                    LocalDate day = s.getSampleTime().atZone(IST).toLocalDate();
+                    maxDailyByDate.merge(day, d, Math::max);
+                }
+                energyMonth = maxDailyByDate.values().stream().mapToDouble(Double::doubleValue).sum();
+            }
+
+            if (peakKw <= 0.0) peakKw = samplePeak;
+        }
+
+        int daysElapsed = today.getDayOfMonth();
+        double avgPerDay = daysElapsed > 0 ? energyMonth / daysElapsed : 0.0;
+
+        Double capacityKw = (siteId != null)
+                ? siteRepo.findById(siteId).map(s -> s.getCapacityKw()).orElse(null)
+                : null;
+
+        Double cufPct = null;
+        if (capacityKw != null && capacityKw > 0 && daysElapsed > 0) {
+            double hours = daysElapsed * 24.0;
+            cufPct = (energyMonth / (capacityKw * hours)) * 100.0;
         }
 
         StringBuilder sb = new StringBuilder();

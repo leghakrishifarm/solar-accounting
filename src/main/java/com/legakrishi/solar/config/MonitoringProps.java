@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "lkf.monitoring")
 public class MonitoringProps {
+
     private Long siteId = 1L;
     private Long deviceId = 1L;
 
@@ -16,13 +17,7 @@ public class MonitoringProps {
     private double zeroThresholdKw = 0.1;
 
     private String daylightStart = "09:00";
-    private String daylightEnd = "17:00";
-
-    public String getDaylightStart() { return daylightStart; }
-    public void setDaylightStart(String daylightStart) { this.daylightStart = daylightStart; }
-
-    public String getDaylightEnd() { return daylightEnd; }
-    public void setDaylightEnd(String daylightEnd) { this.daylightEnd = daylightEnd; }
+    private String daylightEnd   = "17:00";
 
     public Long getSiteId() { return siteId; }
     public void setSiteId(Long siteId) { this.siteId = siteId; }
@@ -41,4 +36,10 @@ public class MonitoringProps {
 
     public double getZeroThresholdKw() { return zeroThresholdKw; }
     public void setZeroThresholdKw(double zeroThresholdKw) { this.zeroThresholdKw = zeroThresholdKw; }
+
+    public String getDaylightStart() { return daylightStart; }
+    public void setDaylightStart(String daylightStart) { this.daylightStart = daylightStart; }
+
+    public String getDaylightEnd() { return daylightEnd; }
+    public void setDaylightEnd(String daylightEnd) { this.daylightEnd = daylightEnd; }
 }

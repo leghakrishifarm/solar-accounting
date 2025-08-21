@@ -41,13 +41,6 @@
         .chart-wrap{ height:300px; position:relative; }
         .chart-empty{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:.95rem; pointer-events:none; }
 
-        .demo-ribbon{
-          position:absolute; top:.5rem; right:.5rem; z-index:5; font-size:.75rem;
-          background:repeating-linear-gradient(45deg,#fde68a,#fde68a 10px,#f59e0b 10px,#f59e0b 20px);
-          color:#1f2937; padding:.25rem .5rem; border-radius:.5rem; box-shadow:var(--shadow); display:none;
-        }
-        .demo-ribbon.show{ display:inline-block; }
-
         .live-dot{
           width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px;
           background:#ef4444; box-shadow:0 0 0 rgba(239,68,68,.7); animation:pulse 1.5s infinite;
@@ -167,47 +160,16 @@
         </div>
     </div>
 
-    <!-- Quick Access -->
-    <div class="row quick-access-row g-3 justify-content-center py-2">
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/partners}" class="quick-card shadow-sm">
-                <i class="bi bi-people quick-icon"></i><div class="quick-title">Partners</div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/transactions}" class="quick-card shadow-sm">
-                <i class="bi bi-cash-coin quick-icon"></i><div class="quick-title">Transactions</div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/transactions/other-income/add}" class="quick-card shadow-sm">
-                <i class="bi bi-piggy-bank quick-icon"></i><div class="quick-title">Add Other Income</div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/transactions/add/outgoing}" class="quick-card shadow-sm">
-                <i class="bi bi-plus-circle quick-icon"></i><div class="quick-title">Add Outgoing</div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/jmr_reports}" class="quick-card shadow-sm">
-                <i class="bi bi-clipboard-data quick-icon"></i><div class="quick-title">JMR Reports</div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/jmr_reports/add}" class="quick-card shadow-sm">
-                <i class="bi bi-plus-circle-dotted quick-icon"></i><div class="quick-title">Add JMR</div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/bills}" class="quick-card shadow-sm">
-                <i class="bi bi-list-check quick-icon"></i><div class="quick-title">Manage Bills</div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3 col-lg-2">
-            <a th:href="@{/admin/bills/generate}" class="quick-card shadow-sm">
-                <i class="bi bi-receipt quick-icon"></i><div class="quick-title">Generate Bill</div>
-            </a>
+    <!-- Live Intraday Power (3 meters) -->
+    <div class="card chart-card mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="card-title mb-0"><i class="bi bi-lightning-charge me-2"></i> Live Power — MAIN / STANDBY / CHECK (kW)</h6>
+                <span id="liveStatus" class="badge bg-light text-dark"><span class="live-dot" id="liveDot"></span>connecting…</span>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="liveChartAdmin"></canvas>
+            </div>
         </div>
     </div>
 
@@ -233,7 +195,6 @@
         <div class="row g-3">
             <div class="col-12 col-lg-6">
                 <div class="card chart-card">
-                    <div class="demo-ribbon" id="demoDailyRibbon">Demo Data</div>
                     <div class="card-body chart-wrap">
                         <h6 class="card-title mb-2">Daily AC Active Energy (kWh)</h6>
                         <canvas id="chAcDaily"></canvas>
@@ -368,215 +329,102 @@
         </div>
     </div>
 
-    <!-- Intraday (Time View) -->
+    <!-- ====== Server values for JS ====== -->
+    <script th:inline="javascript">
+        const DEFAULT_SITE_ID = /*[[${defaultSiteId}]]*/ 1;
+    </script>
+
+    <!-- ====== Live streaming scripts ====== -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <!-- Live 3-meter chart (prefill + STOMP) -->
     <script>
         (() => {
-          const $site   = document.getElementById('tvSite');
-          const $date   = document.getElementById('tvDate');
-          const $metric = document.getElementById('tvMetric');
-          const $btn    = document.getElementById('tvReload');
-          const $chips  = document.getElementById('tvChips');   // optional; safe if missing
-          const $legend = document.getElementById('tvLegend');
-          const $status = document.getElementById('tvStatus');  // pills container
-          const canvas  = document.getElementById('tvChart');
-          const emptyEl = document.getElementById('tvEmpty');
-          const ctx     = canvas ? canvas.getContext('2d') : null;
+          const statusEl = document.getElementById('liveStatus');
+          const dot = document.getElementById('liveDot');
+          const ctx = document.getElementById('liveChartAdmin')?.getContext('2d');
+          const siteSel = document.getElementById('siteSelect');
 
-          // Defaults
-          if ($metric && !$metric.value) $metric.value = 'TOTAL_AC_POWER';
-          if ($date && !$date.value) {
-            const today = new Date();
-            today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-            $date.value = today.toISOString().slice(0,10);
-          }
-
-          let chart;
-          const colors = {
-            MAIN:    'rgba(255,99,132,0.9)',
-            STANDBY: 'rgba(75,192,192,0.9)',
-            CHECK:   'rgba(153,102,255,0.9)'
-          };
-
-          const dataset = (label, data, color) => ({
-            label,
-            data: data || [],
-            borderColor: color,
-            backgroundColor: color,
-            tension: 0.25,
-            pointRadius: 0,
-            borderWidth: 2
+          const labels=[], main=[], standby=[], check=[];
+          const chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [
+              { label:'MAIN (kW)',    data:main,    fill:false, tension:0.25 },
+              { label:'STANDBY (kW)', data:standby, fill:false, tension:0.25 },
+              { label:'CHECK (kW)',   data:check,   fill:false, tension:0.25 }
+            ]},
+            options: {
+              animation:false, responsive:true,
+              scales:{ y:{ beginAtZero:true }, x:{ ticks:{ maxTicksLimit:12 } } },
+              plugins:{ legend:{ position:'bottom' } }
+            }
           });
 
-          // ---------- UI helpers ----------
-          function makePill(text, ok) {
-            const span = document.createElement('span');
-            span.className = `badge ${ok ? 'bg-success' : 'bg-secondary'} px-3 py-2`;
-            span.style.borderRadius = '999px';
-            span.textContent = text;
-            return span;
+          function upsert(label, a,b,c){
+            const last = labels.length ? labels[labels.length-1] : null;
+            if (last===label){
+              main[main.length-1]=a; standby[standby.length-1]=b; check[check.length-1]=c;
+            } else {
+              labels.push(label); main.push(a); standby.push(b); check.push(c);
+              if (labels.length>96){ labels.shift(); main.shift(); standby.shift(); check.shift(); }
+            }
+            chart.update('none');
           }
 
-          // Compute ONLINE/IDLE from the last non-null point; add last sample time
-          function computeStatus(seriesMap, labels, unit) {
-            const out = {};
-            const THRESH = unit === 'kW' ? 0.5 : 0.05; // power vs energy threshold
-            ['MAIN','STANDBY','CHECK'].forEach(m => {
-              const arr = seriesMap?.[m] || [];
-              let lastIdx = -1, lastVal = 0;
-              for (let i = arr.length - 1; i >= 0; i--) {
-                const v = arr[i];
-                if (v != null) { lastIdx = i; lastVal = Number(v) || 0; break; }
-              }
-              out[m] = {
-                value: lastVal,
-                online: lastVal >= THRESH,
-                lastAt: (lastIdx >= 0 && labels?.[lastIdx]) ? labels[lastIdx] : null
-              };
-            });
-            return out;
-          }
-
-          function buildChips(totals){
-            if (!$chips) return;         // safe if not present in DOM
-            $chips.innerHTML = '';
-            ['MAIN','STANDBY','CHECK'].forEach(m => {
-              const btn = document.createElement('button');
-              btn.type = 'button';
-              btn.className = 'btn btn-outline-success btn-sm';
-              btn.style.borderRadius = '12px';
-              btn.innerHTML = `<div class="fw-bold">${m}</div><div class="small">${(totals[m]??0).toLocaleString()} ${totals.unit||''}</div>`;
-              btn.onclick = () => {
-                if (!chart) return;
-                const idx = chart.data.datasets.findIndex(d => d.label.startsWith(m));
-                if (idx >= 0) {
-                  chart.setDatasetVisibility(idx, !chart.isDatasetVisible(idx));
-                  chart.update();
-                }
-              };
-              $chips.appendChild(btn);
-            });
-          }
-
-          // Ensure JSON (catches 302 to login/HTML errors)
-          async function safeJson(res) {
-            const ct = res.headers.get('content-type') || '';
-            if (!ct.includes('application/json')) throw new Error('NOT_JSON');
-            return res.json();
-          }
-
-          async function load() {
-            if (!ctx) return;
-            const siteId = $site?.value;
-            const day    = $date?.value;
-            const metric = $metric?.value || 'TOTAL_AC_POWER';
-            if (!siteId || !day) return;
-
-            // Clear pills while loading
-            if ($status) $status.innerHTML = '';
-
-            try {
-              const url = `/admin/charts/intraday?siteId=${encodeURIComponent(siteId)}&day=${encodeURIComponent(day)}&metric=${encodeURIComponent(metric)}&stepMin=1`;
-              const res = await fetch(url, { cache:'no-store', credentials:'same-origin' });
-              if (!res.ok) throw new Error(res.statusText);
-              const data = await safeJson(res);
-
-              const labels = data.labels || [];
-              const unit   = data.unit || '';
-              const s      = data.series || {};
-
-              // ---------- Status pills ----------
-              if ($status) {
-                const st = computeStatus(s, labels, unit);
-                $status.innerHTML = '';
-                ['MAIN','STANDBY','CHECK'].forEach(m => {
-                  const it = st[m];
-                  const txt = `${m}: ${it.online ? 'ONLINE' : 'IDLE'}${it.lastAt ? ` · ${it.lastAt}` : ''}`;
-                  $status.appendChild(makePill(txt, it.online));
-                });
-              }
-
-              // ---------- Datasets ----------
-              const ds = [];
-              if (s.MAIN)    ds.push(dataset('MAIN — '+metric,    s.MAIN,    colors.MAIN));
-              if (s.STANDBY) ds.push(dataset('STANDBY — '+metric, s.STANDBY, colors.STANDBY));
-              if (s.CHECK)   ds.push(dataset('CHECK — '+metric,   s.CHECK,   colors.CHECK));
-
-              const values   = [ ...(s.MAIN||[]), ...(s.STANDBY||[]), ...(s.CHECK||[]) ].map(v=>+v||0);
-              const maxVal   = values.reduce((m,v)=> Math.max(m,v), 0);
-              const hasPoints= labels.length > 0 && ds.some(d => (d.data||[]).length > 0);
-              const allZero  = hasPoints && maxVal === 0;
-
-              // Visual baseline for all-zero (so a line is visible)
-              const EPS = metric.includes('POWER') ? 0.01 : 0.05;
-              if (allZero) {
-                ds.forEach(d => d.data = (d.data||[]).map(v => v == null ? null : (Number(v) === 0 ? EPS : Number(v))));
-              }
-
-              // Empty overlay
-              if (emptyEl) {
-                if (!hasPoints) {
-                  emptyEl.textContent = 'No data returned for this day/metric';
-                  emptyEl.style.display = 'flex';
-                } else if (allZero) {
-                  emptyEl.textContent = 'All values are 0 — no activity in this window';
-                  emptyEl.style.display = 'flex';
-                } else {
-                  emptyEl.style.display = 'none';
-                }
-              }
-
-              // Render chart
-              if (chart) chart.destroy();
-              chart = new Chart(ctx, {
-                type:'line',
-                data:{ labels, datasets: ds },
-                options:{
-                  responsive:true,
-                  maintainAspectRatio:false,
-                  interaction:{ mode:'index', intersect:false },
-                  plugins:{ legend:{ position:'bottom' } },
-                  scales:{
-                    y:{
-                      beginAtZero:true,
-                      suggestedMin: allZero ? 0 : undefined,
-                      suggestedMax: allZero ? (EPS * 3) : undefined,
-                      title:{ display:true, text:unit }
-                    },
-                    x:{ ticks:{ maxTicksLimit: 12 } }
-                  }
-                }
-              });
-
-              // Totals chips (last values)
-              const totals = { unit };
-              ['MAIN','STANDBY','CHECK'].forEach(m => {
-                const arr = s[m] || [];
-                let last = 0;
-                for (let i = arr.length-1; i >= 0; i--) { if (arr[i] != null) { last = Number(arr[i]) || 0; break; } }
-                totals[m] = Math.round((last + Number.EPSILON) * 10)/10;
-              });
-              buildChips(totals);
-
-              // Legend
-              if ($legend) $legend.textContent = `Metric: ${metric.replaceAll('_',' ')} • Date: ${day} • Unit: ${unit}`;
-
-            } catch (e) {
-              console.error('Intraday load error:', e);
-              if (emptyEl) {
-                emptyEl.textContent = (e && e.message === 'NOT_JSON') ? 'Not authorized / session expired' : 'Failed to load';
-                emptyEl.style.display = 'flex';
-              }
+          async function prefill(siteId){
+            const d=new Date(), yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+            const url = `/admin/charts/intraday?siteId=${encodeURIComponent(siteId)}&day=${yyyy}-${mm}-${dd}&metric=TOTAL_AC_POWER&stepMin=15`;
+            try{
+              const r=await fetch(url,{credentials:'include', cache:'no-store'});
+              if(!r.ok) throw new Error(r.statusText);
+              const j=await r.json();
+              const s=j.series||{}, L=(j.labels||[]).length;
+              labels.length=0; labels.push(...(j.labels||[]));
+              main.length=0; standby.length=0; check.length=0;
+              main.push(...((s.MAIN||[]).slice(0,L)));
+              standby.push(...((s.STANDBY||[]).slice(0,L)));
+              check.push(...((s.CHECK||[]).slice(0,L)));
+              chart.update('none');
+              statusEl.textContent='history prefilled…';
+              if (dot) dot.classList.add('ok');
+            }catch(e){
+              statusEl.textContent='prefill error';
+              if (dot) dot.classList.remove('ok');
             }
           }
 
-          // Events
-          $btn  ?.addEventListener('click',  load);
-          $site ?.addEventListener('change', load);
-          $date ?.addEventListener('change', load);
-          $metric?.addEventListener('change',load);
+          let client=null, sub=null;
+          function subscribe(siteId){
+            if (!client) return;
+            if (sub) { sub.unsubscribe(); sub=null; }
+            sub = client.subscribe(`/topic/intraday/${siteId}`, msg=>{
+              const t=JSON.parse(msg.body), s=t.series||{};
+              upsert(t.label, Number(s.MAIN||0), Number(s.STANDBY||0), Number(s.CHECK||0));
+            });
+            statusEl.textContent = `live: site ${siteId}`;
+            if (dot) dot.classList.add('ok');
+          }
 
-          // Initial load
-          load();
+          function connectThen(siteId){
+            if (client) { subscribe(siteId); return; }
+            const sock = new SockJS('/ws'); client = Stomp.over(sock); client.debug=null;
+            client.connect({}, ()=>{ statusEl.textContent='connected'; subscribe(siteId); },
+                                ()=>{ statusEl.textContent='connect error'; if(dot) dot.classList.remove('ok'); });
+          }
+
+          function currentSiteId(){
+            const v = siteSel?.value || DEFAULT_SITE_ID || 1;
+            return String(v);
+          }
+
+          // bootstrap
+          const sid = currentSiteId();
+          prefill(sid).then(()=>connectThen(sid));
+          siteSel?.addEventListener('change', ()=>{
+            const sid = currentSiteId();
+            prefill(sid).then(()=>subscribe(sid));
+          });
         })();
     </script>
 
@@ -748,15 +596,15 @@
         })();
     </script>
 
+    <!-- RMS summary fetchers -->
     <script>
         (() => {
-          const $siteSelect = document.getElementById('siteSelect') || document.getElementById('tvSite');
-          const siteId = () => ($siteSelect?.value || '').toString();
+          const $siteSelect = document.getElementById('siteSelect');
+          const siteId = () => ($siteSelect?.value || DEFAULT_SITE_ID || 1).toString();
           const fmtPct = v => (v==null ? '—' : (Number(v).toFixed(1)+'%'));
           const fmtKwh = v => (v==null ? '—' : Number(v).toLocaleString(undefined,{maximumFractionDigits:1})+' kWh');
 
           const el = id => document.getElementById(id);
-
           function set(elm, text){ if (elm) elm.textContent = text; }
           function show(elm, on){ if (elm) elm.classList.toggle('d-none', !on); }
 

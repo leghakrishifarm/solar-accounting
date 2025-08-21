@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 public interface EnergySampleRepository extends JpaRepository<EnergySample, Long> {
 
@@ -44,5 +45,7 @@ public interface EnergySampleRepository extends JpaRepository<EnergySample, Long
 
     boolean existsBySiteIdAndSampleTimeAndMeterKind(
             Long siteId, Instant sampleTime, MeterKind meterKind);
-
+    Optional<EnergySample> findTopBySiteIdAndMeterKindOrderBySampleTimeDesc(Long siteId, MeterKind meterKind);
+    Optional<EnergySample> findTopBySiteIdAndMeterKindAndSampleTimeLessThanEqualOrderBySampleTimeDesc(
+            Long siteId, MeterKind meterKind, Instant sampleTime);
 }
