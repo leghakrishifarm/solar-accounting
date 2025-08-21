@@ -9,8 +9,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 
 @Configuration
+@ConditionalOnBean({ SiteRepository.class, DeviceRepository.class })
 public class MonitoringBootstrap implements CommandLineRunner {
 
     private final SiteRepository siteRepo;

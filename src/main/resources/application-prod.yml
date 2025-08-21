@@ -47,3 +47,10 @@ lkf:
     daylight-end: "17:00"
   security:
     partnerStrict: true
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update   # FIRST launch only; after launch switch to validate
+  flyway:
+    enabled: false

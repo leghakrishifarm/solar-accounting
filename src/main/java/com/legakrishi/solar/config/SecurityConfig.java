@@ -13,6 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
+
 @EnableMethodSecurity(prePostEnabled = true)
 @Configuration
 public class SecurityConfig {
@@ -44,36 +46,54 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Use your DAO provider
+                // Use DAO provider
                 .authenticationProvider(authenticationProvider())
 
-                // CSRF: allow device/simulator POSTs without token
+                // CSRF: allow device/websocket/actuator without token
                 .csrf(csrf -> csrf.ignoringRequestMatchers(
                         new AntPathRequestMatcher("/api/iot/**"),
-                        new AntPathRequestMatcher("/ws/**") // handshake & SockJS info probe are GETs, but safe to ignore
+                        new AntPathRequestMatcher("/ws/**"),
+                        new AntPathRequestMatcher("/actuator/**")
                 ))
 
+                // Authorization rules
                 .authorizeHttpRequests(auth -> auth
-                        // public pages & static
-                        .requestMatchers("/login", "/register").permitAll()
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/assets/**", "/favicon.ico").permitAll()
+                        .requestMatchers(
+                                // health + info
+                                antMatcher("/actuator/health"),
+                                antMatcher("/actuator/info"),
 
-                        // WebSocket handshake / SockJS endpoints must be reachable pre-auth
-                        .requestMatchers("/ws/**").permitAll()
+                                // public pages
+                                antMatcher("/login"),
+                                antMatcher("/register"),
 
-                        // public API (ingest) – no auth
-                        .requestMatchers("/api/iot/**").permitAll()
+                                // static assets
+                                antMatcher("/css/**"),
+                                antMatcher("/js/**"),
+                                antMatcher("/images/**"),
+                                antMatcher("/img/**"),
+                                antMatcher("/webjars/**"),
+                                antMatcher("/assets/**"),
+                                antMatcher("/favicon.ico"),
+                                antMatcher("/robots.txt"),
 
-                        // everything else requires login
+                                // websocket + ingest apis (public by design)
+                                antMatcher("/ws/**"),
+                                antMatcher("/api/iot/**")
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
 
+                // Form login + logout
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/dashboard", true)
                         .permitAll()
                 )
-                .logout(logout -> logout.permitAll());
+                .logout(logout -> logout
+                        .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+                        .permitAll()
+                );
 
         return http.build();
     }
